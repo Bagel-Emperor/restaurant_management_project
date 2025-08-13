@@ -24,10 +24,10 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/',include('home.urls')),
-    path('api/accounts/',include('account.urls')),
-    path('api/products/',include('products.urls')),
-    path('api/orders/',include('orders.urls')),
+    path('PerpexBistro/',include('home.urls')),
+    path('PerpexBistro/accounts/',include('account.urls')),
+    path('PerpexBistro/products/',include('products.urls')),
+    path('PerpexBistro/orders/',include('orders.urls')),
 ]
 
 # Custom 404 error handler

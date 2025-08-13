@@ -20,7 +20,11 @@ def home_view(request):
 	# 'request' is the HTTP request object
 	# 'home/index.html' is the path to our template
 	# The third argument (context) is optional and can be used to pass data to the template
-	return render(request, 'home/index.html')
+def home_view(request):
+    # 'request' is the HTTP request object
+    # 'home/index.html' is the path to our template
+    # The third argument (context) is optional and can be used to pass data to the template
+    return render(request, 'home/index.html')
 
 
 # Custom 404 error handler view

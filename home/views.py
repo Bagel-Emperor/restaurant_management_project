@@ -20,7 +20,6 @@ def home_view(request):
 	}
 	return render(request, 'home/index.html', context)
 
-
 # Custom 404 error handler view
 def custom_404_view(request, exception):
 	"""

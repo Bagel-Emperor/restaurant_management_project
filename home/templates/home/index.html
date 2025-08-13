@@ -36,6 +36,10 @@
     <!-- Main container for homepage content -->
     <div class="container">
         <div class="main-content text-center">
+            <!-- Navigation link to About page -->
+            <nav style="margin-bottom: 20px;">
+                <a href="{% url 'about' %}" class="btn btn-outline-primary">About</a>
+            </nav>
             <!-- Restaurant name from settings.py -->
             <h2 style="color: #3182ce; font-weight: 600; margin-bottom: 24px;">{{ restaurant_name }}</h2>
             <!-- Homepage title -->

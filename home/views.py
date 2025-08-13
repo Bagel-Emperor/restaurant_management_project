@@ -31,3 +31,15 @@ def custom_404_view(request, exception):
 		HttpResponse: Rendered 404 error page.
 	"""
 	return render(request, 'home/404.html', status=404)
+    
+    
+# About page view
+def about_view(request):
+	"""
+	View to render the about page for the restaurant.
+	Args:
+		request: The HTTP request object.
+	Returns:
+		HttpResponse: Rendered about page.
+	"""
+	return render(request, 'home/about.html')

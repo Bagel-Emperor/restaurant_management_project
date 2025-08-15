@@ -15,7 +15,12 @@ body {
     box-shadow: 0 4px 24px rgba(0,0,0,0.08);
     max-width: 700px;
     margin-left: auto;
-    margin-right: auto;
+    margin: 80px auto 0 auto;
+    padding: 40px 30px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    max-width: 700px;
     transition: box-shadow 0.2s;
 }
 .main-content:hover {

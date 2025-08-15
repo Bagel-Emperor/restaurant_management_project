@@ -36,7 +36,9 @@
         <div class="contact-info">
             <strong>Email:</strong> contact@perpexbistro.com<br>
             <strong>Phone:</strong> (555) 123-4567<br>
-            <strong>Address:</strong> 123 Main Street, Cityville, USA
+            <strong>Email:</strong> {{ contact_email }}<br>
+            <strong>Phone:</strong> {{ contact_phone }}<br>
+            <strong>Address:</strong> {{ contact_address }}
         </div>
         <div style="margin-top: 32px;">
             <a href="{% url 'home' %}" class="btn btn-outline-secondary">Back to Home</a>

@@ -1,7 +1,29 @@
+
 # Import the render function to display templates
 from django.shortcuts import render
 # Import settings to access RESTAURANT_NAME
 from django.conf import settings
+
+# Menu page view
+def menu_view(request):
+    """
+    View to render the menu page with a hardcoded list of menu items.
+    Args:
+        request: The HTTP request object.
+    Returns:
+        HttpResponse: Rendered menu page with menu items in context.
+    """
+    menu_items = [
+        {'name': 'Margherita Pizza', 'price': '12.99'},
+        {'name': 'Caesar Salad', 'price': '8.99'},
+        {'name': 'Grilled Salmon', 'price': '16.99'},
+        {'name': 'Spaghetti Carbonara', 'price': '13.99'},
+        {'name': 'Chocolate Lava Cake', 'price': '6.99'},
+    ]
+    context = {
+        'menu_items': menu_items,
+    }
+    return render(request, 'home/menu.html', context)
 
 # This view renders the homepage using our new styled template
 

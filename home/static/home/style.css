@@ -1,12 +1,5 @@
 /* Import a modern Google Font */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-
-body {
-    background: linear-gradient(120deg, #f0f4f8 0%, #d9e7fa 100%);
-    min-height: 100vh;
-    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    color: #22223b;
-}
 .main-content {
     margin-top: 80px;
     padding: 40px 30px;
@@ -55,7 +48,8 @@ p {
     transition: background 0.2s, color 0.2s;
 }
 .btn-outline-primary:hover {
-    background: #3a86ff;
+    background: #90caf9;
     color: #fff;
-    border-color: #3a86ff;
+    border-color: #90caf9;
+    /* Softer, lighter blue */
 }

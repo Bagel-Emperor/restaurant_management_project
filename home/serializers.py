@@ -14,3 +14,4 @@ class RestaurantSerializer(serializers.ModelSerializer):
             'city',
             'created_at',
         ]
+        read_only_fields = ['created_at']

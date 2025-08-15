@@ -41,6 +41,11 @@ h2 {
 p {
     color: #4a5568;
     font-size: 1.15rem;
+    /* margin-bottom: 0; */
+}
+
+/* Remove bottom margin from paragraphs only inside .main-content */
+.main-content p {
     margin-bottom: 0;
 }
 .btn-outline-primary {

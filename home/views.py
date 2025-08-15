@@ -137,4 +137,31 @@ def restaurant_detail(request, pk):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     elif request.method == 'DELETE':
         restaurant.delete()
+@api_view(['GET', 'PUT', 'DELETE'])
+def restaurant_detail(request, pk):
+    """
+    GET: Retrieve a restaurant by ID
+    PUT: Update a restaurant by ID
+    DELETE: Delete a restaurant by ID
+    """
+    try:
+        pk_int = int(pk)
+    except (ValueError, TypeError):
+        return Response({'detail': 'Invalid restaurant ID.'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        restaurant = Restaurant.objects.get(pk=pk_int)
+    except Restaurant.DoesNotExist:
+        return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        serializer = RestaurantSerializer(restaurant)
+        return Response(serializer.data)
+    elif request.method == 'PUT':
+        serializer = RestaurantSerializer(restaurant, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    elif request.method == 'DELETE':
+        restaurant.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

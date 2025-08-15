@@ -1,8 +1,12 @@
-
 # Import the render function to display templates
 from django.shortcuts import render
 # Import settings to access RESTAURANT_NAME
 from django.conf import settings
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Restaurant
+from .serializers import RestaurantSerializer
 
 # Menu page view
 def menu_view(request):
@@ -92,3 +96,72 @@ def contact_view(request):
         'contact_address': '123 Main Street, Cityville, USA',
     }
     return render(request, 'home/contact.html', context)
+
+@api_view(['GET', 'POST'])
+def restaurant_list_create(request):
+    """
+    GET: List all restaurants
+    POST: Register a new restaurant
+    """
+    if request.method == 'GET':
+        restaurants = Restaurant.objects.all()
+        serializer = RestaurantSerializer(restaurants, many=True)
+        return Response(serializer.data)
+    elif request.method == 'POST':
+        serializer = RestaurantSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET', 'PUT', 'DELETE'])
+def restaurant_detail(request, pk):
+    """
+    GET: Retrieve a restaurant by ID
+    PUT: Update a restaurant by ID
+    DELETE: Delete a restaurant by ID
+    """
+    try:
+        restaurant = Restaurant.objects.get(pk=pk)
+    except Restaurant.DoesNotExist:
+        return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        serializer = RestaurantSerializer(restaurant)
+        return Response(serializer.data)
+    elif request.method == 'PUT':
+        serializer = RestaurantSerializer(restaurant, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    elif request.method == 'DELETE':
+        restaurant.delete()
+@api_view(['GET', 'PUT', 'DELETE'])
+def restaurant_detail(request, pk):
+    """
+    GET: Retrieve a restaurant by ID
+    PUT: Update a restaurant by ID
+    DELETE: Delete a restaurant by ID
+    """
+    try:
+        pk_int = int(pk)
+    except (ValueError, TypeError):
+        return Response({'detail': 'Invalid restaurant ID.'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        restaurant = Restaurant.objects.get(pk=pk_int)
+    except Restaurant.DoesNotExist:
+        return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        serializer = RestaurantSerializer(restaurant)
+        return Response(serializer.data)
+    elif request.method == 'PUT':
+        serializer = RestaurantSerializer(restaurant, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    elif request.method == 'DELETE':
+        restaurant.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -1,3 +1,9 @@
+
+# Import the render function to display templates
+from django.shortcuts import render
+# Import settings to access RESTAURANT_NAME
+from django.conf import settings
+
 # Menu page view
 def menu_view(request):
     """
@@ -18,10 +24,6 @@ def menu_view(request):
         'menu_items': menu_items,
     }
     return render(request, 'home/menu.html', context)
-# Import the render function to display templates
-from django.shortcuts import render
-# Import settings to access RESTAURANT_NAME
-from django.conf import settings
 
 # This view renders the homepage using our new styled template
 

@@ -1,6 +1,5 @@
 /* Import a modern Google Font */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-/* Softer, lighter blue */
 .main-content {
     margin-top: 80px;
     padding: 40px 30px;
@@ -48,9 +47,9 @@ p {
     letter-spacing: 0.5px;
     transition: background 0.2s, color 0.2s;
 }
-/* Softer, lighter blue for button hover */
 .btn-outline-primary:hover {
     background: #90caf9;
     color: #fff;
     border-color: #90caf9;
+    /* Softer, lighter blue */
 }

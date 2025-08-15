@@ -43,3 +43,14 @@ def about_view(request):
 		HttpResponse: Rendered about page.
 	"""
 	return render(request, 'home/about.html')
+
+# Contact page view
+def contact_view(request):
+	"""
+	View to render the contact page for the restaurant.
+	Args:
+		request: The HTTP request object.
+	Returns:
+		HttpResponse: Rendered contact page.
+	"""
+	return render(request, 'home/contact.html')

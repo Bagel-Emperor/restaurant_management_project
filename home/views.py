@@ -65,6 +65,8 @@ def contact_view(request):
         'restaurant_name': getattr(settings, 'RESTAURANT_NAME', 'Our Restaurant'),
         'contact_email': 'contact@perpexbistro.com',
         'contact_phone': '(555) 123-4567',
+        'contact_email': 'contact@perpexbistro.com',
+        'contact_phone': getattr(settings, 'RESTAURANT_PHONE', '(555) 123-4567'),
         'contact_address': '123 Main Street, Cityville, USA',
     }
     return render(request, 'home/contact.html', context)

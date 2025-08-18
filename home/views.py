@@ -30,7 +30,6 @@ def menu_view(request):
     return render(request, 'home/menu.html', context)
 
 # This view renders the homepage using our new styled template
-
 def home_view(request):
     """
     View to render the homepage with the restaurant's name and phone number from settings.
@@ -57,7 +56,6 @@ def custom_404_view(request, exception):
 	"""
 	return render(request, 'home/404.html', status=404)
     
-    
 # About page view
 def about_view(request):
     """
@@ -78,7 +76,6 @@ def about_view(request):
     return render(request, 'home/about.html', context)
 
 # Contact page view
-
 def contact_view(request):
     """
     View to render the contact page for the restaurant.
@@ -97,71 +94,62 @@ def contact_view(request):
     }
     return render(request, 'home/contact.html', context)
 
-@api_view(['GET', 'POST'])
-def restaurant_list_create(request):
+# --- RESTAURANT API CRUD VIEWS (one per method, as per assignment style) ---
+@api_view(['POST'])
+def create_restaurant(request):
     """
-    GET: List all restaurants
-    POST: Register a new restaurant
+    Register a new restaurant.
     """
-    if request.method == 'GET':
-        restaurants = Restaurant.objects.all()
-        serializer = RestaurantSerializer(restaurants, many=True)
-        return Response(serializer.data)
-    elif request.method == 'POST':
-        serializer = RestaurantSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer = RestaurantSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET', 'PUT', 'DELETE'])
-def restaurant_detail(request, pk):
+@api_view(['GET'])
+def list_restaurants(request):
     """
-    GET: Retrieve a restaurant by ID
-    PUT: Update a restaurant by ID
-    DELETE: Delete a restaurant by ID
+    List all restaurants.
+    """
+    restaurants = Restaurant.objects.all()
+    serializer = RestaurantSerializer(restaurants, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+def get_restaurant(request, pk):
+    """
+    Retrieve a restaurant by ID.
     """
     try:
         restaurant = Restaurant.objects.get(pk=pk)
     except Restaurant.DoesNotExist:
         return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+    serializer = RestaurantSerializer(restaurant)
+    return Response(serializer.data)
 
-    if request.method == 'GET':
-        serializer = RestaurantSerializer(restaurant)
-        return Response(serializer.data)
-    elif request.method == 'PUT':
-        serializer = RestaurantSerializer(restaurant, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    elif request.method == 'DELETE':
-        restaurant.delete()
-@api_view(['GET', 'PUT', 'DELETE'])
-def restaurant_detail(request, pk):
+@api_view(['PUT'])
+def update_restaurant(request, pk):
     """
-    GET: Retrieve a restaurant by ID
-    PUT: Update a restaurant by ID
-    DELETE: Delete a restaurant by ID
+    Update a restaurant by ID.
     """
     try:
-        pk_int = int(pk)
-    except (ValueError, TypeError):
-        return Response({'detail': 'Invalid restaurant ID.'}, status=status.HTTP_400_BAD_REQUEST)
-    try:
-        restaurant = Restaurant.objects.get(pk=pk_int)
+        restaurant = Restaurant.objects.get(pk=pk)
     except Restaurant.DoesNotExist:
         return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-    if request.method == 'GET':
-        serializer = RestaurantSerializer(restaurant)
+    serializer = RestaurantSerializer(restaurant, data=request.data)
+    if serializer.is_valid():
+        serializer.save()
         return Response(serializer.data)
-    elif request.method == 'PUT':
-        serializer = RestaurantSerializer(restaurant, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    elif request.method == 'DELETE':
-        restaurant.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['DELETE'])
+def delete_restaurant(request, pk):
+    """
+    Delete a restaurant by ID.
+    """
+    try:
+        restaurant = Restaurant.objects.get(pk=pk)
+    except Restaurant.DoesNotExist:
+        return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+    restaurant.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)

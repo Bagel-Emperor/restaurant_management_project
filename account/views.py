@@ -24,4 +24,7 @@ class StaffLoginAPIView(APIView):
 		user = authenticate(request, username=email, password=password)
 		if user is not None and user.is_staff:
 			return Response({'success': 'Login successful.'}, status=status.HTTP_200_OK)
+		if user is not None and user.is_staff:
+			token, created = Token.objects.get_or_create(user=user)
+			return Response({'success': 'Login successful.', 'token': token.key}, status=status.HTTP_200_OK)
 		return Response({'error': 'Invalid credentials or not a staff member.'}, status=status.HTTP_401_UNAUTHORIZED)

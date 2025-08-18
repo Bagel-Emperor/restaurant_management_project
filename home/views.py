@@ -64,7 +64,7 @@ def update_menu_item(request, pk):
         menu_item = MenuItem.objects.get(pk=pk)
     except MenuItem.DoesNotExist:
         return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
-    serializer = MenuItemSerializer(menu_item, data=request.data)
+    serializer = MenuItemSerializer(menu_item, data=request.data, partial=False)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data)

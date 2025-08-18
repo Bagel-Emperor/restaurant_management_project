@@ -5,8 +5,82 @@ from django.conf import settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Restaurant
-from .serializers import RestaurantSerializer
+from .models import Restaurant, MenuItem
+from .serializers import RestaurantSerializer, MenuItemSerializer
+# --- MENU ITEM API CRUD VIEWS (one per method, as per assignment style) ---
+
+@api_view(['POST'])
+def create_menu_item(request):
+    """
+    Add a new menu item.
+    """
+    serializer = MenuItemSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+def list_menu_items(request):
+    """
+    List all menu items, optionally filtered by restaurant ID (?restaurant=<id>).
+    """
+    restaurant_id = request.GET.get('restaurant')
+    if restaurant_id:
+        menu_items = MenuItem.objects.filter(restaurant_id=restaurant_id)
+    else:
+        menu_items = MenuItem.objects.all()
+    serializer = MenuItemSerializer(menu_items, many=True)
+    restaurant_id = request.GET.get('restaurant')
+    if restaurant_id:
+        try:
+            restaurant_id_int = int(restaurant_id)
+        except (ValueError, TypeError):
+            return Response({'detail': 'Invalid restaurant id.'}, status=status.HTTP_400_BAD_REQUEST)
+        menu_items = MenuItem.objects.filter(restaurant_id=restaurant_id_int)
+    else:
+        menu_items = MenuItem.objects.all()
+    serializer = MenuItemSerializer(menu_items, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+def get_menu_item(request, pk):
+    """
+    Retrieve a specific menu item by ID.
+    """
+    try:
+        menu_item = MenuItem.objects.get(pk=pk)
+    except MenuItem.DoesNotExist:
+        return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+    serializer = MenuItemSerializer(menu_item)
+    return Response(serializer.data)
+
+@api_view(['PUT'])
+def update_menu_item(request, pk):
+    """
+    Update a menu item by ID.
+    """
+    try:
+        menu_item = MenuItem.objects.get(pk=pk)
+    except MenuItem.DoesNotExist:
+        return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+    serializer = MenuItemSerializer(menu_item, data=request.data, partial=False)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['DELETE'])
+def delete_menu_item(request, pk):
+    """
+    Delete a menu item by ID.
+    """
+    try:
+        menu_item = MenuItem.objects.get(pk=pk)
+    except MenuItem.DoesNotExist:
+        return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+    menu_item.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
 # Menu page view
 def menu_view(request):

@@ -31,6 +31,16 @@ def list_menu_items(request):
     else:
         menu_items = MenuItem.objects.all()
     serializer = MenuItemSerializer(menu_items, many=True)
+    restaurant_id = request.GET.get('restaurant')
+    if restaurant_id:
+        try:
+            restaurant_id_int = int(restaurant_id)
+        except (ValueError, TypeError):
+            return Response({'detail': 'Invalid restaurant id.'}, status=status.HTTP_400_BAD_REQUEST)
+        menu_items = MenuItem.objects.filter(restaurant_id=restaurant_id_int)
+    else:
+        menu_items = MenuItem.objects.all()
+    serializer = MenuItemSerializer(menu_items, many=True)
     return Response(serializer.data)
 
 @api_view(['GET'])

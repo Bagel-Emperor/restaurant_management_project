@@ -17,6 +17,8 @@ urlpatterns = [
     # API endpoints for restaurant CRUD (one per method)
     path('api/restaurants/', list_restaurants, name='restaurant-list'),
     path('api/restaurants/create/', create_restaurant, name='restaurant-create'),
+    path('api/restaurants/', list_restaurants, name='restaurant-list'),
+    # Removed 'api/restaurants/create/' to follow REST conventions; POST to 'api/restaurants/' now creates a restaurant
     path('api/restaurants/<int:pk>/', get_restaurant, name='restaurant-detail'),
     path('api/restaurants/<int:pk>/update/', update_restaurant, name='restaurant-update'),
     path('api/restaurants/<int:pk>/delete/', delete_restaurant, name='restaurant-delete'),

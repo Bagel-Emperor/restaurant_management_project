@@ -1,0 +1,55 @@
+/* Import a modern Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+.main-content {
+    margin-top: 80px;
+    padding: 40px 30px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    max-width: 700px;
+    margin-left: auto;
+    margin: 80px auto 0 auto;
+    padding: 40px 30px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    max-width: 700px;
+    transition: box-shadow 0.2s;
+}
+.main-content:hover {
+    box-shadow: 0 16px 48px rgba(0,0,0,0.13);
+}
+h1 {
+    color: #22223b;
+    font-weight: 700;
+    margin-bottom: 18px;
+    letter-spacing: 0.5px;
+}
+h2 {
+    color: #3a86ff;
+    font-weight: 600;
+    margin-bottom: 20px;
+    letter-spacing: 0.2px;
+}
+p {
+    color: #4a5568;
+    font-size: 1.15rem;
+    /* margin-bottom: 0; */
+}
+
+/* Remove bottom margin from paragraphs only inside .main-content */
+.main-content p {
+    margin-bottom: 0;
+}
+.btn-outline-primary {
+    border-radius: 8px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: background 0.2s, color 0.2s;
+}
+.btn-outline-primary:hover {
+    background: #90caf9;
+    color: #fff;
+    border-color: #90caf9;
+    /* Softer, lighter blue */
+}

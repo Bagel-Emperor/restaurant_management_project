@@ -18,7 +18,7 @@
                 <a href="{% url 'about' %}" class="btn btn-outline-primary me-2">About</a>
                 <a href="{% url 'menu' %}" class="btn btn-outline-primary me-2">Menu</a>
                 <a href="{% url 'contact' %}" class="btn btn-outline-primary me-2">Contact Us</a>
-                <a href="/PerpexBistro/accounts/staff-login/" class="btn btn-warning">Staff Login</a>
+                <a href="{% url 'staff-login' %}" class="btn btn-warning">Staff Login</a>
             </nav>
             <!-- Restaurant name from settings.py -->
             <h2 style="color: #3182ce; font-weight: 600; margin-bottom: 24px;">{{ restaurant_name }}</h2>

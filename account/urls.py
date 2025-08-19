@@ -1,6 +1,7 @@
 from django.urls import path
-from .views import StaffLoginAPIView
+
+from .views import staff_login
 
 urlpatterns = [
-	path('staff-login/', StaffLoginAPIView.as_view(), name='staff-login'),
+	path('staff-login/', staff_login, name='staff-login'),
 ]

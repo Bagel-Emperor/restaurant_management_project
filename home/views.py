@@ -1,5 +1,19 @@
+# Reservations page view
+def reservations_view(request):
+    """
+    View to render the reservations page (placeholder).
+    """
+    return render(request, 'home/reservations.html')
 # Import the render function to display templates
 from django.shortcuts import render
+# Reservations page view
+# Import the render function to display templates
+from django.shortcuts import render
+def reservations_view(request):
+    """
+    View to render the reservations page (placeholder).
+    """
+    return render(request, 'home/reservations.html')
 # Import settings to access RESTAURANT_NAME
 from django.conf import settings
 from rest_framework.decorators import api_view

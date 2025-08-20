@@ -22,6 +22,7 @@
             <nav style="margin-bottom: 20px;">
                 <a href="{% url 'about' %}" class="btn btn-outline-primary me-2">About</a>
                 <a href="{% url 'menu' %}" class="btn btn-outline-primary me-2">Menu</a>
+                <a href="{% url 'reservations' %}" class="btn btn-outline-primary me-2">Reservations</a>
                 <a href="{% url 'contact' %}" class="btn btn-outline-primary me-2">Contact Us</a>
                 <a href="{% url 'staff-login' %}" class="btn btn-warning">Staff Login</a>
             </nav>
@@ -33,10 +34,8 @@
             <p>Manage your restaurant efficiently and with style!</p>
         </div>
 
-        <!-- Footer with phone number -->
-        <footer class="text-center mt-5" style="color: #4a5568; font-size: 1.1rem;">
-            Phone: {{ restaurant_phone }}
-        </footer>
+    <!-- Footer include -->
+    {% include 'home/footer.html' %}
     </div>
 </body>
 </html>

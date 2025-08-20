@@ -13,6 +13,11 @@
     <!-- Main container for homepage content -->
     <div class="container">
         <div class="main-content text-center">
+            <!-- Restaurant Logo with overlayed text -->
+            <div style="position: relative; display: inline-block; margin-bottom: 1.5rem;">
+                <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=400&q=80" alt="Perpex Bistro Logo" style="max-width: 220px; height: auto; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 1.3rem; font-weight: bold; text-shadow: 0 2px 8px rgba(0,0,0,0.7); white-space: nowrap;">{{ restaurant_name }}</span>
+            </div>
             <!-- Navigation link to About page -->
             <nav style="margin-bottom: 20px;">
                 <a href="{% url 'about' %}" class="btn btn-outline-primary me-2">About</a>

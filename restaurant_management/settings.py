@@ -25,8 +25,12 @@ SECRET_KEY = 'django-insecure-s^x_u!itekxd=@a3o3zv4d%hw$j6d#2v358wgltxl8rc(-^t&p
 
 # Restaurant name for display on homepage
 RESTAURANT_NAME = "Perpex Bistro"
+
 # Restaurant phone number for display on homepage and contact page
 RESTAURANT_PHONE = "(555) 123-4567"
+
+# Restaurant opening hours for display in the footer
+RESTAURANT_HOURS = "Mon-Fri: 11am-9pm, Sat-Sun: 10am-10pm"
 
 
 # SECURITY WARNING: don't run with debug turned on in production!

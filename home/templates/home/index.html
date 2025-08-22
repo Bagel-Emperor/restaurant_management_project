@@ -24,6 +24,7 @@
                 <a href="{% url 'menu' %}" class="btn btn-outline-primary me-2">Menu</a>
                 <a href="{% url 'reservations' %}" class="btn btn-outline-primary me-2">Reservations</a>
                 <a href="{% url 'contact' %}" class="btn btn-outline-primary me-2">Contact Us</a>
+                <a href="{% url 'feedback' %}" class="btn btn-outline-success me-2">Feedback</a>
                 <a href="{% url 'staff-login' %}" class="btn btn-warning">Staff Login</a>
             </nav>
             <!-- Restaurant name from settings.py -->
@@ -32,6 +33,13 @@
             <h1>Welcome to the Restaurant Management System</h1>
             <!-- Brief description -->
             <p>Manage your restaurant efficiently and with style!</p>
+        </div>
+
+        <!-- Search Bar (no logic yet) -->
+        <form class="d-flex justify-content-center mb-4" style="max-width: 400px; margin: 0 auto;">
+            <input class="form-control me-2" type="search" placeholder="Search menu items..." aria-label="Search" name="q" disabled>
+            <button class="btn btn-outline-primary" type="submit" disabled>Search</button>
+        </form>
         </div>
 
     <!-- Footer include -->

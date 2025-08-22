@@ -1,5 +1,8 @@
 from .forms import FeedbackForm
 
+from .forms import FeedbackForm
+from django.shortcuts import render
+
 # Feedback page view
 def feedback_view(request):
     submitted = False

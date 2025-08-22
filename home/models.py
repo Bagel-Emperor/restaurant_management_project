@@ -22,3 +22,10 @@ class MenuItem(models.Model):
 
 	def __str__(self):
 		return self.name
+
+class Feedback(models.Model):
+	comment = models.TextField()
+	created_at = models.DateTimeField(auto_now_add=True)
+
+	def __str__(self):
+		return f"Feedback {self.id} at {self.created_at}" if self.id else "Feedback"

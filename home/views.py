@@ -1,3 +1,19 @@
+from .forms import FeedbackForm
+
+from .forms import FeedbackForm
+from django.shortcuts import render
+
+# Feedback page view
+def feedback_view(request):
+    submitted = False
+    if request.method == 'POST':
+        form = FeedbackForm(request.POST)
+        if form.is_valid():
+            form.save()
+            submitted = True
+    else:
+        form = FeedbackForm()
+    return render(request, 'home/feedback.html', {'form': form, 'submitted': submitted})
 # Reservations page view
 def reservations_view(request):
     """

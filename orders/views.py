@@ -28,7 +28,8 @@ class CustomerOrderListView(generics.ListAPIView):
 from rest_framework import status
 from rest_framework.views import APIView
 
-class OrderCreateView(APIView):
+
+class CreateOrderView(APIView):
 	permission_classes = [permissions.AllowAny]
 
 	def post(self, request, *args, **kwargs):
@@ -37,17 +38,20 @@ class OrderCreateView(APIView):
 
 		customer = None
 		if request.user.is_authenticated:
-			# If you later link Order to User, associate here
-			pass  # Placeholder for user linkage
+			# User linkage can be added here in the future
+			pass
 		elif customer_data:
-			# Validate and create Customer for guest
 			serializer = CustomerSerializer(data=customer_data)
 			serializer.is_valid(raise_exception=True)
 			customer = serializer.save()
 
+		total_price = data.get('total_price')
+		if total_price is None:
+			return Response({'error': 'total_price is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
 		order_data = {
 			'customer': customer.id if customer else None,
-			'total_amount': data.get('total_price'),
+			'total_amount': total_price,
 			'status': data.get('status', 'pending'),
 		}
 		order_serializer = OrderSerializer(data=order_data)

@@ -60,3 +60,20 @@ class OrderCreateView(APIView):
 			'customer': CustomerSerializer(customer).data if customer else None,
 		}
 		return Response(response_data, status=status.HTTP_201_CREATED)
+
+
+# API view to list and create customers
+class CustomerListCreateAPIView(APIView):
+	permission_classes = [permissions.AllowAny]
+
+	def get(self, request, *args, **kwargs):
+		customers = Customer.objects.all().order_by('-created_at')
+		serializer = CustomerSerializer(customers, many=True)
+		return Response(serializer.data)
+
+	def post(self, request, *args, **kwargs):
+		serializer = CustomerSerializer(data=request.data)
+		# Allow partial/empty data for guest/quick entry
+		serializer.is_valid(raise_exception=True)
+		customer = serializer.save()
+		return Response(CustomerSerializer(customer).data, status=status.HTTP_201_CREATED)

@@ -12,7 +12,8 @@ class UserProfile(models.Model):
 	phone = models.CharField(max_length=20, blank=True)
 
 	def __str__(self):
-		return self.name or self.user.username
+		full_name = self.user.get_full_name()
+		return full_name or self.user.username
 
 class Customer(models.Model):
 	name = models.CharField(max_length=100, blank=True, null=True)

@@ -57,6 +57,30 @@
         </div>
 
         <!-- Search Bar (no logic yet) -->
+
+        <!-- Menu Section -->
+        <div class="menu-section mt-5">
+            <h3 class="mb-4">Our Menu</h3>
+            {% if menu_items %}
+                <div class="row justify-content-center">
+                    {% for item in menu_items %}
+                        <div class="col-md-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ item.name }}</h5>
+                                    <p class="card-text">{{ item.description }}</p>
+                                    <p class="card-text fw-bold">${{ item.price }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p>No menu items available at this time.</p>
+            {% endif %}
+        </div>
+
+        <!-- Search Bar (no logic yet) -->
         <form class="d-flex justify-content-center mb-4" style="max-width: 400px; margin: 0 auto;">
             <input class="form-control me-2" type="search" placeholder="Search menu items..." aria-label="Search" name="q" disabled>
             <button class="btn btn-outline-primary" type="submit" disabled>Search</button>

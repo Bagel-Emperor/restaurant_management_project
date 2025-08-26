@@ -15,6 +15,50 @@ Django-based backend
 Custom 404 error page with Bootstrap styling
 Static file handling and .gitignore configuration
 Example views, templates, and URL routing
-Notes
+
+# How to Add Menu Items
+
+You can add menu items to the site using either the Django admin interface or the Django shell. Both methods update the database and make items visible on the homepage and menu page.
+
+## Using Django Admin (Recommended)
+1. Start the development server:
+	```
+	python manage.py runserver
+	```
+2. Open your browser and go to [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/)
+3. Log in with your superuser credentials (create one with `python manage.py createsuperuser` if needed).
+4. Click on **Restaurants** to add a restaurant if none exist.
+5. Click on **Menu items** to add menu items. Fill in the details and make sure **Is available** is checked.
+6. Save. The items will now appear on the homepage and menu page.
+
+## Using Django Shell
+1. Open a terminal in your project directory (where `manage.py` is located).
+2. Start the Django shell:
+	```
+	python manage.py shell
+	```
+3. Run the following code to create a restaurant (if you don't have one):
+	```python
+	from home.models import Restaurant
+	Restaurant.objects.create(
+		 name="Perpex Bistro",
+		 owner_name="Owner Name",
+		 email="owner@example.com",
+		 phone_number="555-1234",
+		 address="123 Main St",
+		 city="Springfield"
+	)
+	```
+4. Then add menu items:
+	```python
+	from home.models import MenuItem, Restaurant
+	restaurant = Restaurant.objects.first()
+	MenuItem.objects.create(name="Margherita Pizza", description="Classic pizza with tomato, mozzarella, and basil.", price=12.99, restaurant=restaurant, is_available=True)
+	MenuItem.objects.create(name="Caesar Salad", description="Crisp romaine, parmesan, croutons, and Caesar dressing.", price=8.99, restaurant=restaurant, is_available=True)
+	MenuItem.objects.create(name="Grilled Salmon", description="Fresh salmon fillet with lemon butter sauce.", price=16.99, restaurant=restaurant, is_available=True)
+	```
+5. Type `exit()` to leave the shell.
+
+---
 Please do not use this code as-is for any production environment.
 Feedback and suggestions for improvement are encouraged as part of the learning process.

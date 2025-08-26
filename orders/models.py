@@ -1,8 +1,19 @@
 
 from django.db import models
+from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.contrib.auth.models import User
 from home.models import MenuItem
+
+# UserProfile model extending Django User
+class UserProfile(models.Model):
+	user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
+	name = models.CharField(max_length=100, blank=True)
+	phone = models.CharField(max_length=20, blank=True)
+
+	def __str__(self):
+		full_name = self.user.get_full_name()
+		return full_name or self.user.username
 
 class Customer(models.Model):
 	name = models.CharField(max_length=100, blank=True, null=True)

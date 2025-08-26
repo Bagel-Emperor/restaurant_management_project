@@ -121,13 +121,8 @@ def menu_view(request):
     Returns:
         HttpResponse: Rendered menu page with menu items in context.
     """
-    menu_items = [
-        {'name': 'Margherita Pizza', 'price': '12.99'},
-        {'name': 'Caesar Salad', 'price': '8.99'},
-        {'name': 'Grilled Salmon', 'price': '16.99'},
-        {'name': 'Spaghetti Carbonara', 'price': '13.99'},
-        {'name': 'Chocolate Lava Cake', 'price': '6.99'},
-    ]
+    from .models import MenuItem
+    menu_items = MenuItem.objects.filter(is_available=True)
     context = {
         'menu_items': menu_items,
     }
@@ -142,9 +137,12 @@ def home_view(request):
     Returns:
         HttpResponse: Rendered homepage with restaurant name and phone in context.
     """
+    from .models import MenuItem
+    menu_items = MenuItem.objects.filter(is_available=True)
     context = {
         'restaurant_name': getattr(settings, 'RESTAURANT_NAME', 'Our Restaurant'),
         'restaurant_phone': getattr(settings, 'RESTAURANT_PHONE', ''),
+        'menu_items': menu_items,
     }
     return render(request, 'home/index.html', context)
 

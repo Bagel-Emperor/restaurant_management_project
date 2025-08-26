@@ -29,6 +29,9 @@ RESTAURANT_NAME = "Perpex Bistro"
 # Restaurant phone number for display on homepage and contact page
 RESTAURANT_PHONE = "(555) 123-4567"
 
+
+# Restaurant address for display on homepage and map
+RESTAURANT_ADDRESS = "123 Main St, Springfield, USA"
 # Restaurant opening hours for display in the footer
 RESTAURANT_HOURS = "Mon-Fri: 11am-9pm, Sat-Sun: 10am-10pm"
 

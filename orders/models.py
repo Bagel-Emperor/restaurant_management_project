@@ -38,7 +38,7 @@ class OrderItem(models.Model):
 	order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='order_items')
 	menu_item = models.ForeignKey(MenuItem, on_delete=models.CASCADE)
 	quantity = models.PositiveIntegerField(default=1)
-	price = models.DecimalField(max_digits=8, decimal_places=2)
+	price = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
 
 	def __str__(self):
 		return f"{self.quantity} x {self.menu_item.name} for Order {self.order.id}"

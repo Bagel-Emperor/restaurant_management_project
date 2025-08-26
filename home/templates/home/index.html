@@ -33,6 +33,21 @@
             <h1>Welcome to the Restaurant Management System</h1>
             <!-- Brief description -->
             <p>Manage your restaurant efficiently and with style!</p>
+
+            <!-- Address and Map Section -->
+            <div class="mt-4">
+                <h4>Our Address</h4>
+                <p>{{ restaurant_address }}</p>
+                <div style="width:100%;max-width:400px;margin:auto;">
+                    <iframe
+                        width="100%"
+                        height="250"
+                        frameborder="0" style="border:0"
+                        src="https://www.google.com/maps?q={{ restaurant_address|urlencode }}&output=embed"
+                        allowfullscreen>
+                    </iframe>
+                </div>
+            </div>
         </div>
 
         <!-- Search Bar (no logic yet) -->

@@ -29,9 +29,6 @@ class RestaurantLocation(models.Model):
 
 	def __str__(self):
 		return f"{self.address}, {self.city}, {self.state} {self.zip_code}"
-from django.db import models
-
-
 class MenuItem(models.Model):
 	name = models.CharField(max_length=100)
 	description = models.TextField(blank=True)

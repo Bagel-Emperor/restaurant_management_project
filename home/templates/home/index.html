@@ -66,6 +66,11 @@
                     {% for item in menu_items %}
                         <div class="col-md-4 mb-4">
                             <div class="card h-100">
+                                {% if item.image %}
+                                    <img src="{{ item.image.url }}" class="card-img-top" alt="{{ item.name }}" style="max-height:200px; object-fit:cover;">
+                                {% else %}
+                                    <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=400&q=80" class="card-img-top" alt="No image available" style="max-height:200px; object-fit:cover; opacity:0.7;">
+                                {% endif %}
                                 <div class="card-body">
                                     <h5 class="card-title">{{ item.name }}</h5>
                                     <p class="card-text">{{ item.description }}</p>

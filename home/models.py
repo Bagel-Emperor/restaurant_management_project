@@ -37,6 +37,7 @@ class MenuItem(models.Model):
 	restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='menu_items')
 	is_available = models.BooleanField(default=True)
 	created_at = models.DateTimeField(auto_now_add=True)
+	image = models.ImageField(upload_to='menu_images/', blank=True, null=True)
 
 	def __str__(self):
 		return self.name

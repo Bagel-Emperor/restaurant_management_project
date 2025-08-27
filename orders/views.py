@@ -1,7 +1,8 @@
 
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
+from rest_framework.views import APIView
 from .models import Order, Customer
 from .serializers import OrderSerializer, CustomerSerializer
 
@@ -23,10 +24,6 @@ class CustomerOrderListView(generics.ListAPIView):
 		else:
 			return Order.objects.none()
 
-
-# API view to create orders, auto-creating Customer for guests
-from rest_framework import status
-from rest_framework.views import APIView
 
 
 class CreateOrderView(APIView):

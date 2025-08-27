@@ -1,42 +1,33 @@
-from .forms import FeedbackForm
 
-from .forms import FeedbackForm
 from django.shortcuts import render
-
-# Feedback page view
-def feedback_view(request):
-    submitted = False
-    if request.method == 'POST':
-        form = FeedbackForm(request.POST)
-        if form.is_valid():
-            form.save()
-            submitted = True
-    else:
-        form = FeedbackForm()
-    return render(request, 'home/feedback.html', {'form': form, 'submitted': submitted})
-# Reservations page view
-def reservations_view(request):
-    """
-    View to render the reservations page (placeholder).
-    """
-    return render(request, 'home/reservations.html')
-# Import the render function to display templates
-from django.shortcuts import render
-# Reservations page view
-# Import the render function to display templates
-from django.shortcuts import render
-def reservations_view(request):
-    """
-    View to render the reservations page (placeholder).
-    """
-    return render(request, 'home/reservations.html')
-# Import settings to access RESTAURANT_NAME
 from django.conf import settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
+from .forms import FeedbackForm
 from .models import Restaurant, MenuItem
 from .serializers import RestaurantSerializer, MenuItemSerializer
+
+def feedback_view(request):
+    """
+    View to handle feedback form submissions and render the feedback page.
+    """
+    if request.method == 'POST':
+        form = FeedbackForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return render(request, 'home/feedback.html', {'form': FeedbackForm(), 'success': True})
+    else:
+        form = FeedbackForm()
+    return render(request, 'home/feedback.html', {'form': form})
+
+# Reservations page view (restored)
+def reservations_view(request):
+    """
+    View to render the reservations page (placeholder).
+    """
+    return render(request, 'home/reservations.html')
+
 # --- MENU ITEM API CRUD VIEWS (one per method, as per assignment style) ---
 
 @api_view(['POST'])

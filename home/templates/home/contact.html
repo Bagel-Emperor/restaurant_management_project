@@ -39,35 +39,16 @@
             <strong>Address:</strong> {{ contact_address }}
         </div>
 
-        <!-- Contact Form -->
-        <form id="contactForm" class="mt-4" onsubmit="return validateContactForm();">
-            <div class="mb-3">
-                <input type="text" class="form-control" id="name" name="name" placeholder="Your Name">
-            </div>
-            <div class="mb-3">
-                <input type="email" class="form-control" id="email" name="email" placeholder="Your Email">
-            </div>
-            <div class="mb-3">
-                <textarea class="form-control" id="message" name="message" rows="4" placeholder="Your Message (optional)"></textarea>
-            </div>
+
+        <!-- Contact Form (Django) -->
+        {% if success %}
+            <div class="alert alert-success mt-4">Thank you for contacting us! We have received your submission.</div>
+        {% endif %}
+        <form method="post" class="mt-4">
+            {% csrf_token %}
+            {{ form.as_p }}
             <button type="submit" class="btn btn-primary">Send Message</button>
         </form>
-        <div id="formError" class="text-danger mt-2" style="display:none;"></div>
-
-        <script>
-        function validateContactForm() {
-            var name = document.getElementById('name').value.trim();
-            var email = document.getElementById('email').value.trim();
-            var errorDiv = document.getElementById('formError');
-            if (!name || !email) {
-                errorDiv.textContent = 'Please fill in both your name and email.';
-                errorDiv.style.display = 'block';
-                return false;
-            }
-            errorDiv.style.display = 'none';
-            return true;
-        }
-        </script>
 
         <div style="margin-top: 32px;">
             <a href="{% url 'home' %}" class="btn btn-outline-secondary">Back to Home</a>

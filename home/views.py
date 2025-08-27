@@ -177,13 +177,23 @@ def contact_view(request):
     Returns:
         HttpResponse: Rendered contact page.
     """
+    from .forms import ContactSubmissionForm
+    success = False
+    if request.method == 'POST':
+        form = ContactSubmissionForm(request.POST)
+        if form.is_valid():
+            form.save()
+            success = True
+            form = ContactSubmissionForm()  # Reset form after success
+    else:
+        form = ContactSubmissionForm()
     context = {
         'restaurant_name': getattr(settings, 'RESTAURANT_NAME', 'Our Restaurant'),
         'contact_email': 'contact@perpexbistro.com',
-        'contact_phone': '(555) 123-4567',
-        'contact_email': 'contact@perpexbistro.com',
         'contact_phone': getattr(settings, 'RESTAURANT_PHONE', '(555) 123-4567'),
         'contact_address': '123 Main Street, Cityville, USA',
+        'form': form,
+        'success': success,
     }
     return render(request, 'home/contact.html', context)
 

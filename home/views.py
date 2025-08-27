@@ -177,7 +177,6 @@ def contact_view(request):
     Returns:
         HttpResponse: Rendered contact page.
     """
-    from .forms import ContactSubmissionForm
     success = False
     if request.method == 'POST':
         form = ContactSubmissionForm(request.POST)

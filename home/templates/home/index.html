@@ -85,10 +85,10 @@
             {% endif %}
         </div>
 
-        <!-- Search Bar (no logic yet) -->
-        <form class="d-flex justify-content-center mb-4" style="max-width: 400px; margin: 0 auto;">
-            <input class="form-control me-2" type="search" placeholder="Search menu items..." aria-label="Search" name="q" disabled>
-            <button class="btn btn-outline-primary" type="submit" disabled>Search</button>
+        <!-- Search Bar (active) -->
+        <form class="d-flex justify-content-center mb-4" style="max-width: 400px; margin: 0 auto;" method="get">
+            <input class="form-control me-2" type="search" placeholder="Search menu items..." aria-label="Search" name="q" value="{{ search_query|default:'' }}">
+            <button class="btn btn-outline-primary" type="submit">Search</button>
         </form>
         </div>
 

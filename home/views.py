@@ -131,6 +131,10 @@ def home_view(request):
     """
     from .models import MenuItem
     query = request.GET.get('q', '').strip()
+    # Input validation: limit query length and ignore empty/overly long queries
+    MAX_QUERY_LENGTH = 50
+    if len(query) > MAX_QUERY_LENGTH:
+        query = ''
     menu_items = MenuItem.objects.filter(is_available=True)
     if query:
         menu_items = menu_items.filter(name__icontains=query)

@@ -7,6 +7,8 @@ class Restaurant(models.Model):
 	email = models.EmailField(unique=True)
 	phone_number = models.CharField(max_length=20)
 	created_at = models.DateTimeField(auto_now_add=True)
+	# Store opening hours as a JSON object (e.g., {"Monday": "9am-5pm", ...})
+	opening_hours = models.JSONField(default=dict, blank=True)
 
 	def __str__(self):
 		return self.name

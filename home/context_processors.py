@@ -1,6 +1,16 @@
 from datetime import datetime
 from django.conf import settings
+
 from home.models import Restaurant, RestaurantLocation
+
+def format_opening_hours(hours_dict):
+    # Standard order for days of the week
+    days_order = [
+        "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+    ]
+    if not isinstance(hours_dict, dict):
+        return str(hours_dict)
+    return ", ".join(f"{day}: {hours_dict.get(day, 'Closed')}" for day in days_order)
 
 def current_year(request):
     # Try to get the first restaurant and its location
@@ -12,12 +22,7 @@ def current_year(request):
         address = getattr(settings, 'RESTAURANT_ADDRESS', '123 Main St, Springfield, USA')
     # Get opening hours from the Restaurant model if available
     if restaurant and restaurant.opening_hours:
-        # Format opening hours as a string for display
-        hours_dict = restaurant.opening_hours
-        if isinstance(hours_dict, dict):
-            hours_str = ", ".join(f"{day}: {hours}" for day, hours in hours_dict.items())
-        else:
-            hours_str = str(hours_dict)
+        hours_str = format_opening_hours(restaurant.opening_hours)
     else:
         hours_str = getattr(settings, 'RESTAURANT_HOURS', 'Mon-Fri: 11am-9pm, Sat-Sun: 10am-10pm')
     return {

@@ -1,6 +1,7 @@
 
 from django.shortcuts import render
 from django.conf import settings
+from django.core.mail import send_mail
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -177,7 +178,6 @@ def contact_view(request):
     Returns:
         HttpResponse: Rendered contact page.
     """
-    from django.core.mail import send_mail
     success = False
     if request.method == 'POST':
         form = ContactSubmissionForm(request.POST)
@@ -185,12 +185,13 @@ def contact_view(request):
             submission = form.save()
             # Send email notification to restaurant
             restaurant_email = getattr(settings, 'RESTAURANT_EMAIL', 'contact@perpexbistro.com')
+            system_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@perpexbistro.com')
             subject = f"New Contact Submission from {submission.name}"
             message = f"Name: {submission.name}\nEmail: {submission.email}\nMessage: {submission.message}"
             send_mail(
                 subject,
                 message,
-                restaurant_email,  # from email
+                system_email,  # from email
                 [restaurant_email],  # to email
                 fail_silently=True,
             )

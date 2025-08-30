@@ -4,7 +4,7 @@ from django.conf import settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from .forms import FeedbackForm
+from .forms import FeedbackForm, ContactSubmissionForm
 from .models import Restaurant, MenuItem
 from .serializers import RestaurantSerializer, MenuItemSerializer
 
@@ -177,11 +177,23 @@ def contact_view(request):
     Returns:
         HttpResponse: Rendered contact page.
     """
+    from django.core.mail import send_mail
     success = False
     if request.method == 'POST':
         form = ContactSubmissionForm(request.POST)
         if form.is_valid():
-            form.save()
+            submission = form.save()
+            # Send email notification to restaurant
+            restaurant_email = getattr(settings, 'RESTAURANT_EMAIL', 'contact@perpexbistro.com')
+            subject = f"New Contact Submission from {submission.name}"
+            message = f"Name: {submission.name}\nEmail: {submission.email}\nMessage: {submission.message}"
+            send_mail(
+                subject,
+                message,
+                restaurant_email,  # from email
+                [restaurant_email],  # to email
+                fail_silently=True,
+            )
             success = True
             form = ContactSubmissionForm()  # Reset form after success
     else:

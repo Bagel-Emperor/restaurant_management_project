@@ -130,11 +130,19 @@ def home_view(request):
         HttpResponse: Rendered homepage with restaurant name and phone in context.
     """
     from .models import MenuItem
+    query = request.GET.get('q', '').strip()
+    # Input validation: limit query length and ignore empty/overly long queries
+    MAX_QUERY_LENGTH = 50
+    if len(query) > MAX_QUERY_LENGTH:
+        query = ''
     menu_items = MenuItem.objects.filter(is_available=True)
+    if query:
+        menu_items = menu_items.filter(name__icontains=query)
     context = {
         'restaurant_name': getattr(settings, 'RESTAURANT_NAME', 'Our Restaurant'),
         'restaurant_phone': getattr(settings, 'RESTAURANT_PHONE', ''),
         'menu_items': menu_items,
+        'search_query': query,
     }
     return render(request, 'home/index.html', context)
 

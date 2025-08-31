@@ -138,9 +138,11 @@ def home_view(request):
     menu_items = MenuItem.objects.filter(is_available=True)
     if query:
         menu_items = menu_items.filter(name__icontains=query)
+    # Fetch the first Restaurant instance for homepage info
+    restaurant = Restaurant.objects.first()
     context = {
-        'restaurant_name': getattr(settings, 'RESTAURANT_NAME', 'Our Restaurant'),
-        'restaurant_phone': getattr(settings, 'RESTAURANT_PHONE', ''),
+        'restaurant_name': restaurant.name if restaurant else 'Our Restaurant',
+        'restaurant_phone': restaurant.phone_number if restaurant else '',
         'menu_items': menu_items,
         'search_query': query,
     }

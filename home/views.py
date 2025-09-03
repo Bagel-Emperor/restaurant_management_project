@@ -1,9 +1,3 @@
-def faq_view(request):
-    """
-    View to render the FAQ page with hardcoded questions and answers.
-    """
-    return render(request, 'home/faq.html')
-
 from django.shortcuts import render
 from django.conf import settings
 from django.core.mail import send_mail
@@ -26,6 +20,12 @@ def feedback_view(request):
     else:
         form = FeedbackForm()
     return render(request, 'home/feedback.html', {'form': form})
+
+def faq_view(request):
+    """
+    View to render the FAQ page with hardcoded questions and answers.
+    """
+    return render(request, 'home/faq.html')
 
 # Reservations page view (restored)
 def reservations_view(request):

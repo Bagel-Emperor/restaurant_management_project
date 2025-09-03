@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    home_view, about_view, contact_view, menu_view, reservations_view, feedback_view,
+    home_view, about_view, contact_view, menu_view, reservations_view, feedback_view, faq_view,
     create_restaurant, list_restaurants, get_restaurant, update_restaurant, delete_restaurant,
     create_menu_item, list_menu_items, get_menu_item, update_menu_item, delete_menu_item
 )
@@ -19,6 +19,8 @@ urlpatterns = [
     path('reservations/', reservations_view, name='reservations'),
     # 'feedback/' for the feedback page
     path('feedback/', feedback_view, name='feedback'),
+    # 'faq/' for the FAQ page
+    path('faq/', faq_view, name='faq'),
     # API endpoints for restaurant CRUD (one per method)
     path('api/restaurants/', list_restaurants, name='restaurant-list'),
     path('api/restaurants/create/', create_restaurant, name='restaurant-create'),

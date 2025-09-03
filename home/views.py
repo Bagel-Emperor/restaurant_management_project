@@ -1,5 +1,10 @@
-
 from django.shortcuts import render
+def faq_view(request):
+    """
+    View to render the FAQ page with hardcoded questions and answers.
+    """
+    return render(request, 'home/faq.html')
+
 from django.conf import settings
 from django.core.mail import send_mail
 from rest_framework.decorators import api_view

@@ -1,0 +1,10 @@
+{% comment %}
+Reusable breadcrumbs block for all pages.
+Usage: {% include 'home/breadcrumbs.html' with current_page='Menu' %}
+{% endcomment %}
+<nav aria-label="breadcrumb" class="mt-3 mb-4">
+  <ol class="breadcrumb justify-content-center" style="background: none;">
+    <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ current_page }}</li>
+  </ol>
+</nav>

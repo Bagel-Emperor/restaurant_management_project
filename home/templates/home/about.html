@@ -38,6 +38,7 @@
     </style>
 </head>
 <body>
+    {% include 'home/breadcrumbs.html' with current_page='About' %}
     <div class="about-container text-center">
         <h1 class="about-title">About {{ restaurant_name }}</h1>
         <p class="about-desc">

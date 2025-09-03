@@ -38,6 +38,14 @@
             <!-- Brief description -->
             <p>Manage your restaurant efficiently and with style!</p>
 
+
+            <!-- Current Date and Time Section (centered above address) -->
+            <div class="mb-4 p-3 rounded text-center" style="background:#f8fafc; max-width:400px; margin:0 auto;">
+                <h5 style="color:#3182ce; font-weight:600;">Current Date & Time</h5>
+                <p style="font-size:1.1rem; color:#2d3748; margin-bottom:0;">
+                    {% now "l, F j, Y - h:i A" %}
+                </p>
+            </div>
             <!-- Address and Map Section -->
             {#
                 NOTE: The embedded map below uses a public Google Maps URL without an API key.

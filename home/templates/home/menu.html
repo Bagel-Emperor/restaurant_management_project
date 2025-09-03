@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{% static 'home/style.css' %}">
 </head>
 <body>
+    {% include 'home/breadcrumbs.html' with current_page='Menu' %}
     <div class="container mt-5">
         <h1 class="mb-4 text-center">Menu</h1>
         <ul class="list-group">

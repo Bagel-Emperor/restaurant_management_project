@@ -1,3 +1,8 @@
+def faq_view(request):
+    """
+    View to render the FAQ page with hardcoded questions and answers.
+    """
+    return render(request, 'home/faq.html')
 
 from django.shortcuts import render
 from django.conf import settings

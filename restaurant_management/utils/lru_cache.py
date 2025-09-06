@@ -8,6 +8,8 @@ class LRUCache:
         put(key, value): Add/update value, evict least recently used if full.
     """
     def __init__(self, capacity):
+        if not isinstance(capacity, int) or capacity <= 0:
+            raise ValueError("Capacity must be a positive integer")
         self.capacity = capacity
         self.cache = OrderedDict()  # key -> value, maintains order
 

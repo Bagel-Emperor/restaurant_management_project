@@ -1,30 +1,27 @@
+from collections import OrderedDict
+
 class LRUCache:
     """
-    Basic LRU (Least Recently Used) cache using lists and dictionaries.
+    Basic LRU (Least Recently Used) cache using OrderedDict.
     Methods:
         get(key): Retrieve value and mark key as recently used.
         put(key, value): Add/update value, evict least recently used if full.
     """
     def __init__(self, capacity):
         self.capacity = capacity
-        self.cache = {}  # key -> value
-        self.order = []  # list of keys, most recent at end
+        self.cache = OrderedDict()  # key -> value, maintains order
 
     def get(self, key):
         if key in self.cache:
-            self.order.remove(key)
-            self.order.append(key)
+            self.cache.move_to_end(key)
             return self.cache[key]
         return None
 
     def put(self, key, value):
         if key in self.cache:
             self.cache[key] = value
-            self.order.remove(key)
-            self.order.append(key)
+            self.cache.move_to_end(key)
         else:
             if len(self.cache) >= self.capacity:
-                lru = self.order.pop(0)
-                del self.cache[lru]
+                self.cache.popitem(last=False)  # Remove least recently used
             self.cache[key] = value
-            self.order.append(key)

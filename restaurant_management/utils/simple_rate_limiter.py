@@ -15,8 +15,10 @@ class SimpleRateLimiter:
         __user_requests (dict): Maps user_id to list of request timestamps.
     """
     def __init__(self, max_requests, window_seconds):
-        if not isinstance(max_requests, int) or not isinstance(window_seconds, (int, float)):
-            raise TypeError("max_requests must be int, window_seconds must be int or float")
+        if not isinstance(max_requests, int):
+            raise TypeError("max_requests must be int")
+        if not isinstance(window_seconds, (int, float)):
+            raise TypeError("window_seconds must be int or float")
         if max_requests < 0:
             raise ValueError("max_requests must be non-negative")
         if window_seconds < 0:

@@ -20,15 +20,16 @@ class InMemoryFileStorage:
     def save(self, key, content):
         # Determine content size
         if isinstance(content, str):
-            if len(content) > self.MAX_TEXT_LENGTH:
-                raise ValueError(f"Text file too large (>{self.MAX_TEXT_LENGTH} chars)")
             size = len(content.encode('utf-8'))
+            if size > self.MAX_FILE_SIZE:
+                raise ValueError(f"Text file too large (>{self.MAX_FILE_SIZE} bytes when UTF-8 encoded)")
         elif isinstance(content, bytes):
             size = len(content)
         else:
             raise TypeError("Content must be str or bytes")
 
-        if size > self.MAX_FILE_SIZE:
+        # Already checked for text files above; for bytes, check here
+        if isinstance(content, bytes) and size > self.MAX_FILE_SIZE:
             raise ValueError(f"File too large (>{self.MAX_FILE_SIZE} bytes)")
 
         # Calculate new total size

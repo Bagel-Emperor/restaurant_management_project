@@ -45,7 +45,9 @@ class InMemoryFileStorage:
         self.total_size = new_total
 
     def read(self, key):
-        return self.storage.get(key, None)
+        if key not in self.storage:
+            raise FileNotFoundError(f"No such file: '{key}'")
+        return self.storage[key]
 
     def delete(self, key):
         if key in self.storage:

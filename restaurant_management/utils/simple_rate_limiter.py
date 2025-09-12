@@ -27,13 +27,11 @@ class SimpleRateLimiter:
         # Remove requests outside the window
         requests = [t for t in requests if t > window_start]
 
-        if len(requests) < self.max_requests:
+        allowed = len(requests) < self.max_requests
+        if allowed:
             requests.append(now)
-            self.user_requests[user_id] = requests
-            return True  # Allow request
-        else:
-            self.user_requests[user_id] = requests
-            return False  # Block request
+        self.user_requests[user_id] = requests
+        return allowed
 
     def cleanup(self):
         """

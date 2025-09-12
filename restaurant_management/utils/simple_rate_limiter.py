@@ -32,7 +32,7 @@ class SimpleRateLimiter:
         Checks if the user can make a request based on rate limits.
 
         Args:
-            user_id (str): Unique identifier for the user/client.
+            user_id (Any): Unique identifier for the user/client.
 
         Returns:
             bool: True if request is allowed, False if rate-limited.

@@ -34,3 +34,15 @@ class SimpleRateLimiter:
         else:
             self.user_requests[user_id] = requests
             return False  # Block request
+
+    def cleanup(self):
+        """
+        Removes users with no recent requests from the user_requests dictionary.
+        Call this periodically to prevent memory leaks in long-running applications.
+        """
+        now = time.time()
+        window_start = now - self.window_seconds
+        to_delete = [user_id for user_id, requests in self.user_requests.items()
+                     if not any(t > window_start for t in requests)]
+        for user_id in to_delete:
+            del self.user_requests[user_id]

@@ -1,3 +1,7 @@
+class StorageLimitExceededError(Exception):
+    """Raised when the in-memory file storage exceeds its allowed limit."""
+    pass
+
 class InMemoryFileStorage:
     """
     Simulates a file storage system in memory using a Python dictionary.
@@ -39,7 +43,7 @@ class InMemoryFileStorage:
             prev_size = len(prev.encode('utf-8')) if isinstance(prev, str) else len(prev)
         new_total = self.total_size - prev_size + size
         if new_total > self.MAX_TOTAL_SIZE:
-            raise MemoryError(f"Storage limit exceeded (>{self.MAX_TOTAL_SIZE} bytes)")
+            raise StorageLimitExceededError(f"Storage limit exceeded (>{self.MAX_TOTAL_SIZE} bytes)")
 
         self.storage[key] = content
         self.total_size = new_total

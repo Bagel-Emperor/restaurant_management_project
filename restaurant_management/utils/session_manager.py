@@ -23,19 +23,21 @@ class SessionManager:
     def create_session(self):
         """
         Creates a new session with a unique 32-character hex ID and sets its expiry.
-        
+        Uses time.monotonic() for expiry calculation to avoid issues with system time changes.
+
         Returns:
             str: The session ID.
         """
         session_id = uuid.uuid4().hex
-        expiry = time.time() + self.expiry_seconds
+        expiry = time.monotonic() + self.expiry_seconds
         self._sessions[session_id] = expiry
         return session_id
 
     def is_session_active(self, session_id):
         """
         Checks if the session is active (not expired). Automatically deletes expired sessions.
-        
+        Uses time.monotonic() for expiry validation.
+
         Args:
             session_id (str): The session ID to validate.
         Returns:
@@ -43,15 +45,29 @@ class SessionManager:
         """
         self._cleanup_expired()
         expiry = self._sessions.get(session_id)
-        if expiry is None:
-            return False
-        return True
+        return expiry is not None and time.monotonic() <= expiry
+
+    def end_session(self, session_id):
+        """
+        Explicitly ends (deletes) a session before its expiry.
+
+        Args:
+            session_id (str): The session ID to end.
+        Returns:
+            bool: True if session was ended, False if not found.
+        """
+        if session_id in self._sessions:
+            del self._sessions[session_id]
+            return True
+        return False
 
     def _cleanup_expired(self):
         """
         Removes all expired sessions from the internal session store.
+        Uses time.monotonic() for expiry comparison.
+
+        This private method is called automatically during session validation to ensure expired sessions are cleaned up.
         """
-        now = time.time()
-        expired = (sid for sid, exp in self._sessions.items() if exp < now)
-        for sid in expired:
+        now = time.monotonic()
+        for sid in (sid for sid, exp in self._sessions.items() if exp < now):
             del self._sessions[sid]

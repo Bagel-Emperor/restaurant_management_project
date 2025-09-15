@@ -45,9 +45,6 @@ class SessionManager:
         expiry = self._sessions.get(session_id)
         if expiry is None:
             return False
-        if time.time() > expiry:
-            del self._sessions[session_id]
-            return False
         return True
 
     def _cleanup_expired(self):

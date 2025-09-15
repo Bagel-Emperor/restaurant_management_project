@@ -19,7 +19,6 @@ class SessionManager:
             raise ValueError("expiry_seconds must be a positive integer")
         self.expiry_seconds = expiry_seconds
         self._sessions = {}
-        self._start_time = time.monotonic()
 
     def create_session(self):
         """
@@ -46,12 +45,7 @@ class SessionManager:
         """
         self._cleanup_expired()
         expiry = self._sessions.get(session_id)
-        if expiry is None:
-            return False
-        if time.monotonic() > expiry:
-            del self._sessions[session_id]
-            return False
-        return True
+        return expiry is not None and time.monotonic() <= expiry
 
     def end_session(self, session_id):
         """
@@ -75,6 +69,5 @@ class SessionManager:
         This private method is called automatically during session validation to ensure expired sessions are cleaned up.
         """
         now = time.monotonic()
-        expired = [sid for sid, exp in self._sessions.items() if exp < now]
-        for sid in expired:
+        for sid in (sid for sid, exp in self._sessions.items() if exp < now):
             del self._sessions[sid]

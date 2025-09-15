@@ -52,6 +52,6 @@ class SessionManager:
         Removes all expired sessions from the internal session store.
         """
         now = time.time()
-        expired = [sid for sid, exp in self._sessions.items() if exp < now]
+        expired = (sid for sid, exp in self._sessions.items() if exp < now)
         for sid in expired:
             del self._sessions[sid]

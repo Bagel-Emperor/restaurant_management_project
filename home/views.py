@@ -7,9 +7,9 @@ from rest_framework import status
 from .forms import FeedbackForm, ContactSubmissionForm
 from .models import Restaurant, MenuItem, MenuCategory
 from .serializers import RestaurantSerializer, MenuItemSerializer, MenuCategorySerializer
+from rest_framework.generics import ListAPIView
 
 # DRF API endpoint for listing all menu categories
-from rest_framework.generics import ListAPIView
 
 class MenuCategoryListAPIView(ListAPIView):
     queryset = MenuCategory.objects.all()

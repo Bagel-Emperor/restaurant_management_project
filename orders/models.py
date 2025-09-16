@@ -1,5 +1,5 @@
-
 from django.db import models
+from .choices import OrderStatusChoices
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.contrib.auth.models import User
@@ -53,3 +53,23 @@ class OrderItem(models.Model):
 
 	def __str__(self):
 		return f"{self.quantity} x {self.menu_item.name} for Order {self.order.id}"
+
+# OrderStatus model for representing order states
+class OrderStatus(models.Model):
+	"""
+	Represents a possible status for an order (e.g., Pending, Processing, Completed, Cancelled).
+	Uses OrderStatusChoices for maintainability and type safety.
+	"""
+	name = models.CharField(
+		max_length=50,
+		unique=True,
+		choices=OrderStatusChoices.choices,
+		default=OrderStatusChoices.PENDING
+	)
+
+	class Meta:
+		verbose_name = "Order Status"
+		verbose_name_plural = "Order Statuses"
+
+	def __str__(self):
+		return self.name

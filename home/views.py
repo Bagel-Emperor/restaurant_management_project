@@ -5,8 +5,15 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from .forms import FeedbackForm, ContactSubmissionForm
-from .models import Restaurant, MenuItem
-from .serializers import RestaurantSerializer, MenuItemSerializer
+from .models import Restaurant, MenuItem, MenuCategory
+from .serializers import RestaurantSerializer, MenuItemSerializer, MenuCategorySerializer
+from rest_framework.generics import ListAPIView
+
+# DRF API endpoint for listing all menu categories
+
+class MenuCategoryListAPIView(ListAPIView):
+    queryset = MenuCategory.objects.all()
+    serializer_class = MenuCategorySerializer
 
 def feedback_view(request):
     """

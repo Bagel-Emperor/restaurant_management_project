@@ -2,7 +2,8 @@ from django.urls import path
 from .views import (
     home_view, about_view, contact_view, menu_view, reservations_view, feedback_view, faq_view,
     create_restaurant, list_restaurants, get_restaurant, update_restaurant, delete_restaurant,
-    create_menu_item, list_menu_items, get_menu_item, update_menu_item, delete_menu_item
+    create_menu_item, list_menu_items, get_menu_item, update_menu_item, delete_menu_item,
+    MenuCategoryListAPIView
 )
 
 # URL patterns define which view is called for each URL
@@ -29,6 +30,9 @@ urlpatterns = [
     path('api/restaurants/<int:pk>/', get_restaurant, name='restaurant-detail'),
     path('api/restaurants/<int:pk>/update/', update_restaurant, name='restaurant-update'),
     path('api/restaurants/<int:pk>/delete/', delete_restaurant, name='restaurant-delete'),
+
+    # API endpoint for menu categories
+    path('api/menu-categories/', MenuCategoryListAPIView.as_view(), name='menu-category-list'),
 
     # API endpoints for menu item CRUD (one per method)
     path('api/menu-items/', list_menu_items, name='menuitem-list'),

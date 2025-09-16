@@ -1,4 +1,3 @@
-
 from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator
@@ -53,3 +52,13 @@ class OrderItem(models.Model):
 
 	def __str__(self):
 		return f"{self.quantity} x {self.menu_item.name} for Order {self.order.id}"
+
+# OrderStatus model for representing order states
+class OrderStatus(models.Model):
+	"""
+	Represents a possible status for an order (e.g., Pending, Processing, Completed, Cancelled).
+	"""
+	name = models.CharField(max_length=50, unique=True)
+
+	def __str__(self):
+		return self.name

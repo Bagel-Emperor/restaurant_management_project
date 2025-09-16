@@ -50,3 +50,12 @@ class Feedback(models.Model):
 
 	def __str__(self):
 		return f"Feedback {self.id} at {self.created_at}" if self.id else "Feedback"
+
+class MenuCategory(models.Model):
+	"""
+	Represents a category for menu items (e.g., Appetizers, Main Courses, Desserts).
+	"""
+	name = models.CharField(max_length=100, unique=True)
+
+	def __str__(self):
+		return self.name

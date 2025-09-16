@@ -67,5 +67,9 @@ class OrderStatus(models.Model):
 		default=OrderStatusChoices.PENDING
 	)
 
+	class Meta:
+		verbose_name = "Order Status"
+		verbose_name_plural = "Order Statuses"
+
 	def __str__(self):
 		return self.name

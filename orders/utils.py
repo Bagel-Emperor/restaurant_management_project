@@ -27,7 +27,9 @@ def generate_coupon_code(length=10, existing_codes=None):
         # Example: If you have a Coupon model, use Coupon.objects.values_list('code', flat=True)
         # For now, fallback to an empty set (no uniqueness check)
         existing_codes = set()
-    while True:
+    max_attempts = min(10000, len(alphabet) ** length)
+    for _ in range(max_attempts):
         code = ''.join(secrets.choice(alphabet) for _ in range(length))
         if code not in existing_codes:
             return code
+    raise RuntimeError("Unable to generate a unique coupon code after {} attempts. Consider increasing the code length or clearing used codes.".format(max_attempts))

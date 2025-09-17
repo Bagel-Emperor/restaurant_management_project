@@ -26,23 +26,15 @@ class Customer(models.Model):
 
 
 # Order model for listing and tracking orders
-
-
 class Order(models.Model):
-	STATUS_CHOICES = [
-		("pending", "Pending"),
-		("completed", "Completed"),
-		("canceled", "Canceled"),
-	]
 	user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='orders')
 	customer = models.ForeignKey('Customer', null=True, blank=True, on_delete=models.SET_NULL, related_name='orders')
-	status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+	status = models.ForeignKey('OrderStatus', null=True, on_delete=models.SET_NULL, related_name='orders')
 	total_amount = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
 	created_at = models.DateTimeField(auto_now_add=True)
 
 	def __str__(self):
-		return f"Order {self.id} - {self.status}"
-
+		return f"Order {self.id} - {self.status.name if self.status else 'No Status'}"
 
 # OrderItem model to link Order and MenuItem with quantity and price
 class OrderItem(models.Model):

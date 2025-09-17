@@ -29,10 +29,17 @@ class Customer(models.Model):
 class Order(models.Model):
 	user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='orders')
 	customer = models.ForeignKey('Customer', null=True, blank=True, on_delete=models.SET_NULL, related_name='orders')
-	status = models.ForeignKey('OrderStatus', null=True, on_delete=models.SET_NULL, related_name='orders')
+	status = models.ForeignKey('OrderStatus', null=False, on_delete=models.PROTECT, related_name='orders')
 	total_amount = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
 	created_at = models.DateTimeField(auto_now_add=True)
 
+	def save(self, *args, **kwargs):
+		if not self.status_id:
+			from .choices import OrderStatusChoices
+			OrderStatus = self._meta.get_field('status').related_model
+			default_status, _ = OrderStatus.objects.get_or_create(name=OrderStatusChoices.PENDING)
+			self.status = default_status
+		super().save(*args, **kwargs)
 	def __str__(self):
 		return f"Order {self.id} - {self.status.name if self.status else 'No Status'}"
 

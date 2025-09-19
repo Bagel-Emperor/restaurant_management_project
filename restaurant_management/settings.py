@@ -11,6 +11,11 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,26 +26,26 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-s^x_u!itekxd=@a3o3zv4d%hw$j6d#2v358wgltxl8rc(-^t&p'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key-for-development-only')
 
 # Restaurant name for display on homepage
-RESTAURANT_NAME = "Perpex Bistro"
+RESTAURANT_NAME = os.getenv('RESTAURANT_NAME', 'Perpex Bistro')
 
 # Restaurant phone number for display on homepage and contact page
-RESTAURANT_PHONE = "(555) 123-4567"
+RESTAURANT_PHONE = os.getenv('RESTAURANT_PHONE', '(555) 123-4567')
 
 
 # Restaurant address for display on homepage and map
-RESTAURANT_ADDRESS = "123 Main St, Springfield, USA"
+RESTAURANT_ADDRESS = os.getenv('RESTAURANT_ADDRESS', '123 Main St, Springfield, USA')
 # Restaurant opening hours for display in the footer
-RESTAURANT_HOURS = "Mon-Fri: 11am-9pm, Sat-Sun: 10am-10pm"
+RESTAURANT_HOURS = os.getenv('RESTAURANT_HOURS', 'Mon-Fri: 11am-9pm, Sat-Sun: 10am-10pm')
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Set DEBUG = False to enable custom error pages (like 404.html).
-DEBUG = False
+DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes', 'on')
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -97,8 +102,12 @@ WSGI_APPLICATION = 'restaurant_management.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.sqlite3'),
+        'NAME': BASE_DIR / os.getenv('DB_NAME', 'db.sqlite3') if os.getenv('DB_ENGINE', 'django.db.backends.sqlite3') == 'django.db.backends.sqlite3' else os.getenv('DB_NAME', ''),
+        'USER': os.getenv('DB_USER', ''),
+        'PASSWORD': os.getenv('DB_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', ''),
+        'PORT': os.getenv('DB_PORT', ''),
     }
 }
 

@@ -1,7 +1,38 @@
-Restaurant Management Project
+# Restaurant Management Project
 This repository contains the code for a restaurant management web application, developed as part of an internship assignment for educational purposes.
 
-Purpose
+## Environment Setup
+
+### Prerequisites
+- Python 3.8+
+- pip (Python package manager)
+
+### Installation
+1. Clone this repository
+2. Copy `.env.example` to `.env` and configure your environment variables:
+   ```bash
+   cp .env.example .env
+   ```
+3. Edit `.env` file with your specific configuration (generate a new SECRET_KEY)
+4. Install dependencies:
+   ```bash
+   pip install django python-dotenv djangorestframework
+   ```
+5. Run migrations:
+   ```bash
+   python manage.py migrate
+   ```
+6. Start the development server:
+   ```bash
+   python manage.py runserver
+   ```
+
+### Security Note
+- Never commit the `.env` file to version control
+- Generate a new SECRET_KEY for production use
+- Set DEBUG=False in production environments
+
+## Purpose
 Educational Use Only:
 This project is not intended for production use. It was created to practice and demonstrate skills in Django, Python, Git, and web development workflows.
 Internship Assignment:

@@ -25,8 +25,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 
+# SECURITY WARNING: don't run with debug turned on in production!
+# Set DEBUG = False to enable custom error pages (like 404.html).
+DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes', 'on')
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key-for-development-only')
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = 'django-insecure-fallback-key-for-development-only'
+    else:
+        raise ValueError("SECRET_KEY environment variable is required for production!")
 
 # Restaurant name for display on homepage
 RESTAURANT_NAME = os.getenv('RESTAURANT_NAME', 'Perpex Bistro')
@@ -41,11 +50,7 @@ RESTAURANT_ADDRESS = os.getenv('RESTAURANT_ADDRESS', '123 Main St, Springfield, 
 RESTAURANT_HOURS = os.getenv('RESTAURANT_HOURS', 'Mon-Fri: 11am-9pm, Sat-Sun: 10am-10pm')
 
 
-# SECURITY WARNING: don't run with debug turned on in production!
-# Set DEBUG = False to enable custom error pages (like 404.html).
-DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes', 'on')
-
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()]
 
 
 # Application definition
@@ -100,10 +105,14 @@ WSGI_APPLICATION = 'restaurant_management.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+# Extract database engine for cleaner configuration
+DB_ENGINE = os.getenv('DB_ENGINE', 'django.db.backends.sqlite3')
+DB_NAME = os.getenv('DB_NAME', 'db.sqlite3')
+
 DATABASES = {
     'default': {
-        'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.sqlite3'),
-        'NAME': BASE_DIR / os.getenv('DB_NAME', 'db.sqlite3') if os.getenv('DB_ENGINE', 'django.db.backends.sqlite3') == 'django.db.backends.sqlite3' else os.getenv('DB_NAME', ''),
+        'ENGINE': DB_ENGINE,
+        'NAME': BASE_DIR / DB_NAME if DB_ENGINE == 'django.db.backends.sqlite3' else DB_NAME,
         'USER': os.getenv('DB_USER', ''),
         'PASSWORD': os.getenv('DB_PASSWORD', ''),
         'HOST': os.getenv('DB_HOST', ''),

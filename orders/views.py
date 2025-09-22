@@ -105,6 +105,6 @@ class UserOrderHistoryView(generics.ListAPIView):
 		serializer = self.get_serializer(queryset, many=True)
 		
 		return Response({
-			'count': queryset.count(),
+			'count': len(serializer.data),
 			'orders': serializer.data
 		})

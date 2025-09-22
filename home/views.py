@@ -47,7 +47,7 @@ class MenuItemViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             permission_classes = [permissions.AllowAny]
         else:
-            permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+            permission_classes = [permissions.IsAdminUser]  # IsAdminUser includes authentication check
         return [permission() for permission in permission_classes]
     
     def get_queryset(self):
@@ -64,8 +64,9 @@ class MenuItemViewSet(viewsets.ModelViewSet):
                 restaurant_id = int(restaurant_id)
                 queryset = queryset.filter(restaurant_id=restaurant_id)
             except (ValueError, TypeError):
-                # Invalid restaurant ID, return empty queryset
-                return MenuItem.objects.none()
+                # Return error response for invalid restaurant ID
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({'restaurant': 'Invalid restaurant ID. Must be a valid integer.'})
         
         # Filter by availability if provided
         is_available = self.request.query_params.get('available', None)
@@ -120,7 +121,7 @@ class MenuItemViewSet(viewsets.ModelViewSet):
             logger.error(f"Error deleting menu item: {str(e)}")
             raise
     
-    @action(detail=True, methods=['patch'], permission_classes=[permissions.IsAuthenticated, permissions.IsAdminUser])
+    @action(detail=True, methods=['patch'], permission_classes=[permissions.IsAdminUser])
     def toggle_availability(self, request, pk=None):
         """
         Custom action to toggle the availability of a menu item.

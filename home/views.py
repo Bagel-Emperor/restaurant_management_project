@@ -53,9 +53,9 @@ class MenuItemViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         Filter queryset based on query parameters.
-        Supports filtering by restaurant and availability.
+        Supports filtering by restaurant, availability, and category.
         """
-        queryset = MenuItem.objects.all().select_related('restaurant')
+        queryset = MenuItem.objects.all().select_related('restaurant', 'category')
         
         # Filter by restaurant if provided
         restaurant_id = self.request.query_params.get('restaurant', None)
@@ -67,6 +67,17 @@ class MenuItemViewSet(viewsets.ModelViewSet):
                 # Return error response for invalid restaurant ID
                 from rest_framework.exceptions import ValidationError
                 raise ValidationError({'restaurant': 'Invalid restaurant ID. Must be a valid integer.'})
+        
+        # Filter by category if provided
+        category = self.request.query_params.get('category', None)
+        if category is not None:
+            # Support both category ID and category name
+            if category.isdigit():
+                # Filter by category ID
+                queryset = queryset.filter(category_id=category)
+            else:
+                # Filter by category name (case-insensitive)
+                queryset = queryset.filter(category__name__icontains=category)
         
         # Filter by availability if provided
         is_available = self.request.query_params.get('available', None)

@@ -28,6 +28,7 @@ class MenuItemSerializer(serializers.ModelSerializer):
     Converts MenuItem instances to JSON and validates input for creation/update.
     Includes custom validation for price and availability.
     """
+    category_name = serializers.SerializerMethodField()
     
     class Meta:
         model = MenuItem
@@ -37,11 +38,19 @@ class MenuItemSerializer(serializers.ModelSerializer):
             'description',
             'price',
             'restaurant',
+            'category',
+            'category_name',
             'is_available',
             'image',
             'created_at',
         ]
         read_only_fields = ['created_at']
+    
+    def get_category_name(self, obj):
+        """
+        Get the category name, returning None if no category is assigned.
+        """
+        return obj.category.name if obj.category else None
     
     def validate_price(self, value):
         """

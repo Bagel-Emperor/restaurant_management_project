@@ -1,10 +1,15 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from .views import (
     home_view, about_view, contact_view, menu_view, reservations_view, feedback_view, faq_view,
     create_restaurant, list_restaurants, get_restaurant, update_restaurant, delete_restaurant,
     create_menu_item, list_menu_items, get_menu_item, update_menu_item, delete_menu_item,
-    MenuCategoryListAPIView
+    MenuCategoryListAPIView, MenuItemViewSet
 )
+
+# Create router for ViewSets
+router = DefaultRouter()
+router.register(r'menu-items', MenuItemViewSet, basename='menuitem')
 
 # URL patterns define which view is called for each URL
 urlpatterns = [
@@ -34,10 +39,13 @@ urlpatterns = [
     # API endpoint for menu categories
     path('api/menu-categories/', MenuCategoryListAPIView.as_view(), name='menu-category-list'),
 
-    # API endpoints for menu item CRUD (one per method)
-    path('api/menu-items/', list_menu_items, name='menuitem-list'),
-    path('api/menu-items/create/', create_menu_item, name='menuitem-create'),
-    path('api/menu-items/<int:pk>/', get_menu_item, name='menuitem-detail'),
-    path('api/menu-items/<int:pk>/update/', update_menu_item, name='menuitem-update'),
-    path('api/menu-items/<int:pk>/delete/', delete_menu_item, name='menuitem-delete'),
+    # API endpoints for menu items using ViewSet (replaces individual CRUD endpoints)
+    path('api/', include(router.urls)),
+    
+    # Legacy individual menu item endpoints (keeping for backward compatibility)
+    path('api/menu-items/legacy/', list_menu_items, name='menuitem-legacy-list'),
+    path('api/menu-items/legacy/create/', create_menu_item, name='menuitem-legacy-create'),
+    path('api/menu-items/legacy/<int:pk>/', get_menu_item, name='menuitem-legacy-detail'),
+    path('api/menu-items/legacy/<int:pk>/update/', update_menu_item, name='menuitem-legacy-update'),
+    path('api/menu-items/legacy/<int:pk>/delete/', delete_menu_item, name='menuitem-legacy-delete'),
 ]

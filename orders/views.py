@@ -95,9 +95,8 @@ class UserOrderHistoryView(generics.ListAPIView):
 	def get_queryset(self):
 		"""Return orders for the authenticated user, ordered by most recent first"""
 		user = self.request.user
-		return Order.objects.filter(user=user).prefetch_related(
-			'order_items__menu_item', 
-			'status'
+		return Order.objects.filter(user=user).select_related('status').prefetch_related(
+			'order_items__menu_item'
 		).order_by('-created_at')
 
 	def list(self, request, *args, **kwargs):

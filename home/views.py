@@ -3,17 +3,149 @@ from django.conf import settings
 from django.core.mail import send_mail
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, viewsets, permissions
+from rest_framework.decorators import action
+from django.db import transaction
+from django.core.exceptions import ValidationError
+import logging
 from .forms import FeedbackForm, ContactSubmissionForm
 from .models import Restaurant, MenuItem, MenuCategory
 from .serializers import RestaurantSerializer, MenuItemSerializer, MenuCategorySerializer
 from rest_framework.generics import ListAPIView
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 # DRF API endpoint for listing all menu categories
 
 class MenuCategoryListAPIView(ListAPIView):
     queryset = MenuCategory.objects.all()
     serializer_class = MenuCategorySerializer
+
+
+class MenuItemViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing menu items with full CRUD operations.
+    Provides proper authentication, validation, and error handling.
+    
+    - LIST: Get all menu items
+    - CREATE: Add new menu item (admin only)
+    - RETRIEVE: Get specific menu item by ID
+    - UPDATE: Update menu item (admin only) 
+    - PARTIAL_UPDATE: Partially update menu item (admin only)
+    - DELETE: Delete menu item (admin only)
+    """
+    queryset = MenuItem.objects.all()
+    serializer_class = MenuItemSerializer
+    
+    def get_permissions(self):
+        """
+        Set permissions based on action.
+        - Read operations (list, retrieve): Allow any user
+        - Write operations (create, update, delete): Require admin/staff
+        """
+        if self.action in ['list', 'retrieve']:
+            permission_classes = [permissions.AllowAny]
+        else:
+            permission_classes = [permissions.IsAdminUser]  # IsAdminUser includes authentication check
+        return [permission() for permission in permission_classes]
+    
+    def get_queryset(self):
+        """
+        Filter queryset based on query parameters.
+        Supports filtering by restaurant and availability.
+        """
+        queryset = MenuItem.objects.all().select_related('restaurant')
+        
+        # Filter by restaurant if provided
+        restaurant_id = self.request.query_params.get('restaurant', None)
+        if restaurant_id is not None:
+            try:
+                restaurant_id = int(restaurant_id)
+                queryset = queryset.filter(restaurant_id=restaurant_id)
+            except (ValueError, TypeError):
+                # Return error response for invalid restaurant ID
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({'restaurant': 'Invalid restaurant ID. Must be a valid integer.'})
+        
+        # Filter by availability if provided
+        is_available = self.request.query_params.get('available', None)
+        if is_available is not None:
+            if is_available.lower() in ['true', '1', 'yes']:
+                queryset = queryset.filter(is_available=True)
+            elif is_available.lower() in ['false', '0', 'no']:
+                queryset = queryset.filter(is_available=False)
+        
+        return queryset
+    
+    def perform_create(self, serializer):
+        """
+        Handle menu item creation with proper error handling.
+        """
+        try:
+            with transaction.atomic():
+                menu_item = serializer.save()
+                logger.info(f"Menu item '{menu_item.name}' created by user {self.request.user.username}")
+        except ValidationError as e:
+            logger.error(f"Validation error creating menu item: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error creating menu item: {str(e)}")
+            raise
+    
+    def perform_update(self, serializer):
+        """
+        Handle menu item updates with proper error handling and logging.
+        """
+        try:
+            with transaction.atomic():
+                old_name = serializer.instance.name
+                menu_item = serializer.save()
+                logger.info(f"Menu item '{old_name}' updated to '{menu_item.name}' by user {self.request.user.username}")
+        except ValidationError as e:
+            logger.error(f"Validation error updating menu item: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error updating menu item: {str(e)}")
+            raise
+    
+    def perform_destroy(self, instance):
+        """
+        Handle menu item deletion with proper logging.
+        """
+        try:
+            name = instance.name
+            instance.delete()
+            logger.info(f"Menu item '{name}' deleted by user {self.request.user.username}")
+        except Exception as e:
+            logger.error(f"Error deleting menu item: {str(e)}")
+            raise
+    
+    @action(detail=True, methods=['patch'], permission_classes=[permissions.IsAdminUser])
+    def toggle_availability(self, request, pk=None):
+        """
+        Custom action to toggle the availability of a menu item.
+        PATCH /api/menu-items/{id}/toggle_availability/
+        """
+        try:
+            menu_item = self.get_object()
+            menu_item.is_available = not menu_item.is_available
+            menu_item.save()
+            
+            status_text = "available" if menu_item.is_available else "unavailable"
+            logger.info(f"Menu item '{menu_item.name}' marked as {status_text} by user {request.user.username}")
+            
+            serializer = self.get_serializer(menu_item)
+            return Response({
+                'message': f'Menu item is now {status_text}',
+                'menu_item': serializer.data
+            })
+        except Exception as e:
+            logger.error(f"Error toggling menu item availability: {str(e)}")
+            return Response(
+                {'error': 'Unable to toggle availability'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 def feedback_view(request):
     """

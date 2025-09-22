@@ -137,10 +137,8 @@ def validate_email_with_details(email: str, strict: bool = True) -> Tuple[bool, 
             if not re.match(r'^[a-zA-Z0-9.-]+$', domain):
                 return False, "Domain contains invalid characters"
         
-        if is_valid_email(email, strict):
-            return True, None
-        else:
-            return False, "Email format is invalid"
+        # All manual checks passed, email is valid
+        return True, None
             
     except Exception as e:
         logger.error(f"Error validating email '{email}': {str(e)}")
@@ -180,11 +178,11 @@ def is_disposable_email_domain(email: str) -> bool:
     Returns:
         bool: True if the domain is likely disposable, False otherwise
     """
-    if not is_valid_email(email, strict=False):
+    if not email or not isinstance(email, str) or '@' not in email:
         return False
     
     try:
-        domain = email.split('@')[1].lower()
+        domain = email.rsplit('@', 1)[1].lower()
         
         # Common disposable email domains (expand this list as needed)
         disposable_domains = {

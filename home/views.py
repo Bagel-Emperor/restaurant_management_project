@@ -71,12 +71,12 @@ class MenuItemViewSet(viewsets.ModelViewSet):
         # Filter by category if provided
         category = self.request.query_params.get('category', None)
         if category is not None:
-            # Support both category ID and category name
-            if category.isdigit():
-                # Filter by category ID
-                queryset = queryset.filter(category_id=category)
-            else:
-                # Filter by category name (case-insensitive)
+            # Try to parse as category ID first, then fall back to name filtering
+            try:
+                category_id = int(category)
+                queryset = queryset.filter(category_id=category_id)
+            except (ValueError, TypeError):
+                # If not a valid integer, filter by category name (case-insensitive)
                 queryset = queryset.filter(category__name__icontains=category)
         
         # Filter by availability if provided

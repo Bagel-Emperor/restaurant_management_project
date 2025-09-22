@@ -172,6 +172,22 @@ class CategoryMenuItemAPITestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 0)
     
+    def test_filter_negative_category_id(self):
+        """Test filtering by negative category ID returns empty results (not treated as name)"""
+        url = reverse('menuitem-list')
+        response = self.client.get(url, {'category': '-1'})
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 0)
+    
+    def test_filter_invalid_category_id_falls_back_to_name(self):
+        """Test that invalid category ID formats fall back to name filtering"""
+        url = reverse('menuitem-list')
+        response = self.client.get(url, {'category': 'abc123'})
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 0)  # No category named 'abc123'
+    
     def test_menu_item_serializer_includes_category_fields(self):
         """Test that menu item serializer includes both category ID and name"""
         url = reverse('menuitem-detail', kwargs={'pk': self.appetizer_item.id})

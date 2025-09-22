@@ -3,8 +3,10 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 from rest_framework.views import APIView
+from rest_framework.authentication import SessionAuthentication, TokenAuthentication
+from django.contrib.auth.models import User
 from .models import Order, Customer
-from .serializers import OrderSerializer, CustomerSerializer
+from .serializers import OrderSerializer, CustomerSerializer, OrderHistorySerializer
 
 class CustomerOrderListView(generics.ListAPIView):
 	serializer_class = OrderSerializer
@@ -18,9 +20,8 @@ class CustomerOrderListView(generics.ListAPIView):
 			# Filter by customer_id (guest or admin lookup)
 			return Order.objects.filter(customer_id=customer_id)
 		elif user:
-			# If you later link Order to User, filter by user here
-			# For now, return empty queryset for authenticated users (no User FK yet)
-			return Order.objects.none()
+			# Filter by authenticated user
+			return Order.objects.filter(user=user)
 		else:
 			return Order.objects.none()
 
@@ -34,9 +35,10 @@ class CreateOrderView(APIView):
 		customer_data = data.pop('customer', None)
 
 		customer = None
+		user = None
 		if request.user.is_authenticated:
-			# User linkage can be added here in the future
-			pass
+			# Link order to authenticated user
+			user = request.user
 		elif customer_data:
 			serializer = CustomerSerializer(data=customer_data)
 			serializer.is_valid(raise_exception=True)
@@ -47,6 +49,7 @@ class CreateOrderView(APIView):
 			return Response({'error': 'total_price is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
 		order_data = {
+			'user': user.id if user else None,
 			'customer': customer.id if customer else None,
 			'total_amount': total_price,
 			'status': data.get('status', 'pending'),
@@ -78,3 +81,31 @@ class CustomerListCreateAPIView(APIView):
 		serializer.is_valid(raise_exception=True)
 		customer = serializer.save()
 		return Response(CustomerSerializer(customer).data, status=status.HTTP_201_CREATED)
+
+
+class UserOrderHistoryView(generics.ListAPIView):
+	"""
+	API endpoint for authenticated users to retrieve their order history.
+	Returns orders with order items, status, and comprehensive details.
+	"""
+	serializer_class = OrderHistorySerializer
+	permission_classes = [permissions.IsAuthenticated]
+	authentication_classes = [SessionAuthentication, TokenAuthentication]
+
+	def get_queryset(self):
+		"""Return orders for the authenticated user, ordered by most recent first"""
+		user = self.request.user
+		return Order.objects.filter(user=user).prefetch_related(
+			'order_items__menu_item', 
+			'status'
+		).order_by('-created_at')
+
+	def list(self, request, *args, **kwargs):
+		"""Override list to add additional metadata"""
+		queryset = self.get_queryset()
+		serializer = self.get_serializer(queryset, many=True)
+		
+		return Response({
+			'count': queryset.count(),
+			'orders': serializer.data
+		})

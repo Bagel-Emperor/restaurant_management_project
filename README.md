@@ -32,6 +32,53 @@ This repository contains the code for a restaurant management web application, d
 - Generate a new SECRET_KEY for production use
 - Set DEBUG=False in production environments
 
+## API Endpoints
+
+### User Order History
+Authenticated users can retrieve their order history with full details.
+
+**Endpoint:** `GET /PerpexBistro/orders/history/`
+
+**Authentication:** Required (Session or Token)
+
+**Response Format:**
+```json
+{
+  "count": 2,
+  "orders": [
+    {
+      "id": 1,
+      "created_at": "2025-09-19T14:30:00Z",
+      "total_amount": "25.99",
+      "status": {
+        "id": 1,
+        "name": "completed"
+      },
+      "items_count": 2,
+      "order_items": [
+        {
+          "id": 1,
+          "menu_item": {
+            "id": 1,
+            "name": "Margherita Pizza",
+            "price": "12.99"
+          },
+          "quantity": 1,
+          "price": "12.99",
+          "total_price": "12.99"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Features:**
+- Returns orders for the authenticated user only
+- Includes nested order items with menu item details
+- Ordered by most recent first
+- Includes total item count and calculated totals
+
 ## Purpose
 Educational Use Only:
 This project is not intended for production use. It was created to practice and demonstrate skills in Django, Python, Git, and web development workflows.

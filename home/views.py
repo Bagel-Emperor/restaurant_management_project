@@ -3,10 +3,11 @@ from django.conf import settings
 from django.core.mail import send_mail
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework import status, viewsets, permissions
+from rest_framework import status, viewsets, permissions, filters
 from rest_framework.decorators import action
 from django.db import transaction
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 import logging
 from .forms import FeedbackForm, ContactSubmissionForm
 from .models import Restaurant, MenuItem, MenuCategory
@@ -25,18 +26,31 @@ class MenuCategoryListAPIView(ListAPIView):
 
 class MenuItemViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for managing menu items with full CRUD operations.
-    Provides proper authentication, validation, and error handling.
+    ViewSet for managing menu items with full CRUD operations and comprehensive search.
+    Provides proper authentication, validation, error handling, and search functionality.
     
-    - LIST: Get all menu items
+    - LIST: Get all menu items with optional search and filtering
     - CREATE: Add new menu item (admin only)
     - RETRIEVE: Get specific menu item by ID
     - UPDATE: Update menu item (admin only) 
     - PARTIAL_UPDATE: Partially update menu item (admin only)
     - DELETE: Delete menu item (admin only)
+    
+    Search Parameters:
+    - search: Text search across name and description
+    - category: Filter by category ID or name
+    - restaurant: Filter by restaurant ID
+    - available: Filter by availability (true/false)
+    - min_price: Minimum price filter
+    - max_price: Maximum price filter
+    - ordering: Sort results (price, name, created_at, -price, -name, -created_at)
     """
     queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name', 'description']
+    ordering_fields = ['name', 'price', 'created_at', 'category__name']
+    ordering = ['-created_at']  # Default ordering by newest first
     
     def get_permissions(self):
         """
@@ -53,9 +67,19 @@ class MenuItemViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         Filter queryset based on query parameters.
-        Supports filtering by restaurant, availability, and category.
+        Supports filtering by restaurant, availability, category, and text search.
+        Also supports price range filtering for comprehensive search functionality.
         """
         queryset = MenuItem.objects.all().select_related('restaurant', 'category')
+        
+        # Text search across name and description
+        search_query = self.request.query_params.get('search', None)
+        if search_query is not None and search_query.strip():
+            # Use Q objects for complex OR search across multiple fields
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) | 
+                Q(description__icontains=search_query)
+            )
         
         # Filter by restaurant if provided
         restaurant_id = self.request.query_params.get('restaurant', None)
@@ -78,6 +102,25 @@ class MenuItemViewSet(viewsets.ModelViewSet):
             except (ValueError, TypeError):
                 # If not a valid integer, filter by category name (case-insensitive)
                 queryset = queryset.filter(category__name__icontains=category)
+        
+        # Price range filtering
+        min_price = self.request.query_params.get('min_price', None)
+        if min_price is not None:
+            try:
+                min_price = float(min_price)
+                queryset = queryset.filter(price__gte=min_price)
+            except (ValueError, TypeError):
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({'min_price': 'Invalid minimum price. Must be a valid number.'})
+        
+        max_price = self.request.query_params.get('max_price', None)
+        if max_price is not None:
+            try:
+                max_price = float(max_price)
+                queryset = queryset.filter(price__lte=max_price)
+            except (ValueError, TypeError):
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({'max_price': 'Invalid maximum price. Must be a valid number.'})
         
         # Filter by availability if provided
         is_available = self.request.query_params.get('available', None)

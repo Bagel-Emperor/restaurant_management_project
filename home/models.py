@@ -37,6 +37,7 @@ class MenuItem(models.Model):
 	description = models.TextField(blank=True)
 	price = models.DecimalField(max_digits=6, decimal_places=2)
 	restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='menu_items')
+	category = models.ForeignKey('MenuCategory', on_delete=models.SET_NULL, null=True, blank=True, related_name='menu_items')
 	is_available = models.BooleanField(default=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 	image = models.ImageField(upload_to='menu_images/', blank=True, null=True)

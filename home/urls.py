@@ -4,7 +4,9 @@ from .views import (
     home_view, about_view, contact_view, menu_view, reservations_view, feedback_view, faq_view,
     create_restaurant, list_restaurants, get_restaurant, update_restaurant, delete_restaurant,
     create_menu_item, list_menu_items, get_menu_item, update_menu_item, delete_menu_item,
-    MenuCategoryListAPIView, MenuItemViewSet
+    MenuCategoryListAPIView, MenuItemViewSet,
+    # Cart API views
+    cart_summary, add_to_cart_api, remove_from_cart_api, update_cart_item_api, clear_cart_api
 )
 
 # Create router for ViewSets
@@ -48,4 +50,11 @@ urlpatterns = [
     path('api/menu-items/legacy/<int:pk>/', get_menu_item, name='menuitem-legacy-detail'),
     path('api/menu-items/legacy/<int:pk>/update/', update_menu_item, name='menuitem-legacy-update'),
     path('api/menu-items/legacy/<int:pk>/delete/', delete_menu_item, name='menuitem-legacy-delete'),
+    
+    # Shopping Cart API endpoints
+    path('api/cart/', cart_summary, name='cart-summary'),
+    path('api/cart/add/', add_to_cart_api, name='add-to-cart'),
+    path('api/cart/remove/<int:menu_item_id>/', remove_from_cart_api, name='remove-from-cart'),
+    path('api/cart/update/<int:menu_item_id>/', update_cart_item_api, name='update-cart-item'),
+    path('api/cart/clear/', clear_cart_api, name='clear-cart'),
 ]

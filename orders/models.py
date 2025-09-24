@@ -5,6 +5,25 @@ from django.core.validators import MinValueValidator
 from django.contrib.auth.models import User
 from home.models import MenuItem
 
+
+class OrderManager(models.Manager):
+	"""
+	Custom model manager for the Order model.
+	Provides convenience methods for retrieving orders based on their status.
+	"""
+	
+	def get_active_orders(self):
+		"""
+		Returns a queryset containing only active orders.
+		Active orders are defined as having a status of 'pending' or 'processing'.
+		
+		Returns:
+			QuerySet: Orders with status 'pending' or 'processing'
+		"""
+		return self.filter(
+			status__name__in=[OrderStatusChoices.PENDING, OrderStatusChoices.PROCESSING]
+		)
+
 # UserProfile model extending Django User
 class UserProfile(models.Model):
 	user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
@@ -32,6 +51,9 @@ class Order(models.Model):
 	status = models.ForeignKey('OrderStatus', null=False, on_delete=models.PROTECT, related_name='orders')
 	total_amount = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
 	created_at = models.DateTimeField(auto_now_add=True)
+	
+	# Custom model manager
+	objects = OrderManager()
 
 	def save(self, *args, **kwargs):
 		if not self.status_id:

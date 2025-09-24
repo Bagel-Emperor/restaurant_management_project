@@ -332,9 +332,6 @@ def home_view(request):
     Returns:
         HttpResponse: Rendered homepage with restaurant name, phone, and cart info in context.
     """
-    from .models import MenuItem
-    from .cart_utils import get_or_create_cart
-    
     query = request.GET.get('q', '').strip()
     # Input validation: limit query length and ignore empty/overly long queries
     MAX_QUERY_LENGTH = 50

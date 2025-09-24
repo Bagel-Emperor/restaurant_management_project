@@ -3,6 +3,9 @@ from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator
 from decimal import Decimal
 
+# Constants
+SESSION_KEY_DISPLAY_LENGTH = 10
+
 # Model to store restaurant location details, linked to Restaurant
 class Restaurant(models.Model):
 	name = models.CharField(max_length=100, unique=True)
@@ -90,7 +93,7 @@ class Cart(models.Model):
 	def __str__(self):
 		if self.user:
 			return f"Cart for {self.user.username}"
-		return f"Cart for session {self.session_key[:10]}..."
+		return f"Cart for session {self.session_key[:SESSION_KEY_DISPLAY_LENGTH]}..."
 
 	@property
 	def total_items(self):

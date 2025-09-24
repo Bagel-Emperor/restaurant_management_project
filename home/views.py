@@ -10,8 +10,12 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 import logging
 from .forms import FeedbackForm, ContactSubmissionForm
-from .models import Restaurant, MenuItem, MenuCategory
+from .models import Restaurant, MenuItem, MenuCategory, Cart, CartItem
 from .serializers import RestaurantSerializer, MenuItemSerializer, MenuCategorySerializer
+from .cart_utils import (
+    get_or_create_cart, add_to_cart, remove_from_cart, 
+    update_cart_item_quantity, clear_cart, get_cart_summary
+)
 from rest_framework.generics import ListAPIView
 
 # Configure logger
@@ -322,12 +326,12 @@ def menu_view(request):
 def home_view(request):
     """
     View to render the homepage with the restaurant's name and phone number from settings.
+    Also includes shopping cart information for the current user/session.
     Args:
         request: The HTTP request object.
     Returns:
-        HttpResponse: Rendered homepage with restaurant name and phone in context.
+        HttpResponse: Rendered homepage with restaurant name, phone, and cart info in context.
     """
-    from .models import MenuItem
     query = request.GET.get('q', '').strip()
     # Input validation: limit query length and ignore empty/overly long queries
     MAX_QUERY_LENGTH = 50
@@ -336,13 +340,20 @@ def home_view(request):
     menu_items = MenuItem.objects.filter(is_available=True)
     if query:
         menu_items = menu_items.filter(name__icontains=query)
+    
     # Fetch the first Restaurant instance for homepage info
     restaurant = Restaurant.objects.first()
+    
+    # Get cart information for current user/session
+    cart = get_or_create_cart(request)
+    cart_total_items = cart.total_items
+    
     context = {
         'restaurant_name': restaurant.name if restaurant else 'Our Restaurant',
         'restaurant_phone': restaurant.phone_number if restaurant else '',
         'menu_items': menu_items,
         'search_query': query,
+        'cart_total_items': cart_total_items,  # This is the main requirement
     }
     return render(request, 'home/index.html', context)
 
@@ -464,6 +475,118 @@ def update_restaurant(request, pk):
         serializer.save()
         return Response(serializer.data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# =============================================================================
+# Shopping Cart API Endpoints
+# =============================================================================
+
+@api_view(['GET'])
+def cart_summary(request):
+    """
+    Get the current cart summary for the user/session.
+    
+    Returns:
+        dict: Cart information including items, totals, and metadata
+    """
+    result = get_cart_summary(request)
+    if result['success']:
+        return Response(result, status=status.HTTP_200_OK)
+    return Response(result, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def add_to_cart_api(request):
+    """
+    Add a menu item to the cart.
+    
+    Expected data:
+        - menu_item_id: ID of the menu item to add
+        - quantity: Quantity to add (optional, defaults to 1)
+    
+    Returns:
+        dict: Success/error message and updated cart info
+    """
+    menu_item_id = request.data.get('menu_item_id')
+    quantity = request.data.get('quantity', 1)
+    
+    if not menu_item_id:
+        return Response({'success': False, 'error': 'menu_item_id is required'}, 
+                       status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        quantity = int(quantity)
+    except (ValueError, TypeError):
+        return Response({'success': False, 'error': 'Invalid quantity'}, 
+                       status=status.HTTP_400_BAD_REQUEST)
+    
+    result = add_to_cart(request, menu_item_id, quantity)
+    if result['success']:
+        return Response(result, status=status.HTTP_200_OK)
+    return Response(result, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['DELETE'])
+def remove_from_cart_api(request, menu_item_id):
+    """
+    Remove a menu item from the cart completely.
+    
+    Args:
+        menu_item_id: ID of the menu item to remove
+    
+    Returns:
+        dict: Success/error message and updated cart info
+    """
+    result = remove_from_cart(request, menu_item_id)
+    if result['success']:
+        return Response(result, status=status.HTTP_200_OK)
+    return Response(result, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['PUT'])
+def update_cart_item_api(request, menu_item_id):
+    """
+    Update the quantity of a cart item.
+    
+    Expected data:
+        - quantity: New quantity (if 0, item will be removed)
+    
+    Args:
+        menu_item_id: ID of the menu item to update
+    
+    Returns:
+        dict: Success/error message and updated cart info
+    """
+    quantity = request.data.get('quantity')
+    
+    if quantity is None:
+        return Response({'success': False, 'error': 'quantity is required'}, 
+                       status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        quantity = int(quantity)
+    except (ValueError, TypeError):
+        return Response({'success': False, 'error': 'Invalid quantity'}, 
+                       status=status.HTTP_400_BAD_REQUEST)
+    
+    result = update_cart_item_quantity(request, menu_item_id, quantity)
+    if result['success']:
+        return Response(result, status=status.HTTP_200_OK)
+    return Response(result, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['DELETE'])
+def clear_cart_api(request):
+    """
+    Clear all items from the cart.
+    
+    Returns:
+        dict: Success/error message
+    """
+    result = clear_cart(request)
+    if result['success']:
+        return Response(result, status=status.HTTP_200_OK)
+    return Response(result, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['DELETE'])
 def delete_restaurant(request, pk):

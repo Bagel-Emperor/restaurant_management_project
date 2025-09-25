@@ -118,8 +118,8 @@ class OrderDetailView(generics.RetrieveAPIView):
 	
 	Features:
 	- Retrieves comprehensive order details including items, customer info, and status
-	- Supports both authenticated users and guest customers
-	- Includes proper permission checks to ensure users can only access their own orders
+	- Requires authentication for all order access
+	- Authenticated users can only access their own orders (superusers can access any)
 	- Returns detailed error messages for non-existent or unauthorized orders
 	"""
 	serializer_class = OrderDetailSerializer
@@ -143,8 +143,8 @@ class OrderDetailView(generics.RetrieveAPIView):
 		Retrieve order with proper authorization checks.
 		
 		Authorization logic:
-		1. If user is authenticated: can access their own orders
-		2. If user is not authenticated: can access orders by providing matching customer info
+		1. Authentication is required for all order access
+		2. Authenticated users can only access their own orders
 		3. Superusers can access any order
 		"""
 		queryset = self.get_queryset()

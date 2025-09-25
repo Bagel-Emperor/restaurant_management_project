@@ -74,6 +74,60 @@ class OrderHistorySerializer(serializers.ModelSerializer):
         return obj.order_items.count()
 
 
+class OrderDetailSerializer(serializers.ModelSerializer):
+    """
+    Detailed serializer for individual order retrieval.
+    Includes comprehensive order information, customer details, and order items.
+    """
+    order_items = OrderItemSerializer(many=True, read_only=True)
+    status = OrderStatusSerializer(read_only=True)
+    customer = CustomerSerializer(read_only=True)
+    
+    # Computed fields
+    items_count = serializers.SerializerMethodField()
+    order_total = serializers.SerializerMethodField()
+    customer_info = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Order
+        fields = [
+            'id', 'created_at', 'total_amount', 'status', 
+            'customer', 'customer_info', 'items_count', 
+            'order_total', 'order_items'
+        ]
+        read_only_fields = ['id', 'created_at', 'total_amount']
+    
+    def get_items_count(self, obj):
+        """Get the total number of items in the order"""
+        return obj.order_items.count()
+    
+    def get_order_total(self, obj):
+        """Get formatted total amount"""
+        return f"${obj.total_amount:.2f}"
+    
+    def get_customer_info(self, obj):
+        """Get customer information with fallback to user info"""
+        if obj.customer:
+            return {
+                'type': 'guest',
+                'name': obj.customer.name,
+                'phone': obj.customer.phone,
+                'email': obj.customer.email
+            }
+        elif obj.user:
+            return {
+                'type': 'registered',
+                'name': obj.user.get_full_name() or obj.user.username,
+                'email': obj.user.email,
+                'username': obj.user.username
+            }
+        else:
+            return {
+                'type': 'unknown',
+                'name': 'Guest Customer'
+            }
+
+
 class UserProfileSerializer(serializers.ModelSerializer):
     """
     Serializer for UserProfile with nested User fields.

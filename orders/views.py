@@ -1,12 +1,14 @@
 
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, viewsets
 from rest_framework.response import Response
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.views import APIView
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
+from rest_framework.decorators import action
 from django.contrib.auth.models import User
-from .models import Order, Customer
-from .serializers import OrderSerializer, CustomerSerializer, OrderHistorySerializer
+from django.shortcuts import get_object_or_404
+from .models import Order, Customer, UserProfile
+from .serializers import OrderSerializer, CustomerSerializer, OrderHistorySerializer, UserProfileSerializer
 
 class CustomerOrderListView(generics.ListAPIView):
 	serializer_class = OrderSerializer
@@ -108,3 +110,83 @@ class UserOrderHistoryView(generics.ListAPIView):
 			'count': len(serializer.data),
 			'orders': serializer.data
 		})
+
+
+class UserProfileViewSet(viewsets.ModelViewSet):
+	"""
+	ViewSet for managing user profiles.
+	Supports retrieving and updating user profile information.
+	Only authenticated users can access their own profile.
+	"""
+	serializer_class = UserProfileSerializer
+	permission_classes = [permissions.IsAuthenticated]
+	authentication_classes = [SessionAuthentication, TokenAuthentication]
+	http_method_names = ['get', 'put', 'patch', 'options', 'head']  # No DELETE, no POST (profiles are created automatically)
+	
+	def get_queryset(self):
+		"""Return only the authenticated user's profile"""
+		return UserProfile.objects.filter(user=self.request.user)
+	
+	def get_object(self):
+		"""
+		Get or create the user profile for the authenticated user.
+		This ensures every user has a profile.
+		"""
+		user = self.request.user
+		profile, created = UserProfile.objects.get_or_create(user=user)
+		
+		# Check object permissions
+		self.check_object_permissions(self.request, profile)
+		return profile
+	
+	def check_object_permissions(self, request, obj):
+		"""
+		Ensure users can only access their own profile.
+		"""
+		super().check_object_permissions(request, obj)
+		if obj.user != request.user:
+			raise PermissionDenied("You can only access your own profile.")
+	
+	def list(self, request, *args, **kwargs):
+		"""
+		Override list to return the user's own profile instead of a list.
+		"""
+		profile = self.get_object()
+		serializer = self.get_serializer(profile)
+		return Response(serializer.data)
+	
+	def retrieve(self, request, *args, **kwargs):
+		"""
+		Retrieve the user's profile. Pk is ignored - always returns current user's profile.
+		"""
+		profile = self.get_object()
+		serializer = self.get_serializer(profile)
+		return Response(serializer.data)
+	
+	def update(self, request, *args, **kwargs):
+		"""
+		Update the user's profile (PUT request).
+		"""
+		partial = kwargs.pop('partial', False)
+		profile = self.get_object()
+		serializer = self.get_serializer(profile, data=request.data, partial=partial)
+		serializer.is_valid(raise_exception=True)
+		self.perform_update(serializer)
+		
+		return Response(serializer.data)
+	
+	def partial_update(self, request, *args, **kwargs):
+		"""
+		Partially update the user's profile (PATCH request).
+		"""
+		kwargs['partial'] = True
+		return self.update(request, *args, **kwargs)
+	
+	@action(detail=False, methods=['get'])
+	def me(self, request):
+		"""
+		Convenience endpoint to get current user's profile at /api/profile/me/
+		"""
+		profile = self.get_object()
+		serializer = self.get_serializer(profile)
+		return Response(serializer.data)

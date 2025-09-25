@@ -54,9 +54,9 @@ def send_order_confirmation_email(
         validate_email(customer_email)
         logger.info(f"Sending order confirmation email for order {order_id} to {customer_email}")
         
-        # Get order details
+        # Get order details with safe select_related (handles nullable relationships)
         try:
-            order = Order.objects.select_related('status', 'customer', 'user').prefetch_related(
+            order = Order.objects.select_related('status').select_related('customer').select_related('user').prefetch_related(
                 'order_items__menu_item'
             ).get(id=order_id)
         except Order.DoesNotExist:
@@ -68,11 +68,11 @@ def send_order_confirmation_email(
                 'email_sent': False
             }
         
-        # Determine customer name
+        # Determine customer name with safe attribute access
         if not customer_name:
-            if order.user:
+            if hasattr(order, 'user') and order.user:
                 customer_name = order.user.get_full_name() or order.user.username
-            elif order.customer and order.customer.name:
+            elif hasattr(order, 'customer') and order.customer and hasattr(order.customer, 'name') and order.customer.name:
                 customer_name = order.customer.name
             else:
                 customer_name = "Valued Customer"
@@ -173,9 +173,9 @@ def send_order_confirmation_html_email(
         validate_email(customer_email)
         logger.info(f"Sending HTML order confirmation email for order {order_id}")
         
-        # Get order details
+        # Get order details with safe select_related (handles nullable relationships)
         try:
-            order = Order.objects.select_related('status', 'customer', 'user').prefetch_related(
+            order = Order.objects.select_related('status').select_related('customer').select_related('user').prefetch_related(
                 'order_items__menu_item'
             ).get(id=order_id)
         except Order.DoesNotExist:
@@ -187,11 +187,11 @@ def send_order_confirmation_html_email(
                 'email_sent': False
             }
         
-        # Determine customer name
+        # Determine customer name with safe attribute access
         if not customer_name:
-            if order.user:
+            if hasattr(order, 'user') and order.user:
                 customer_name = order.user.get_full_name() or order.user.username
-            elif order.customer and order.customer.name:
+            elif hasattr(order, 'customer') and order.customer and hasattr(order.customer, 'name') and order.customer.name:
                 customer_name = order.customer.name
             else:
                 customer_name = "Valued Customer"
@@ -268,8 +268,11 @@ def _create_order_confirmation_text(context: Dict) -> str:
     restaurant_name = context.get('restaurant_name', 'Perpex Bistro')
     support_email = context.get('support_email', 'support@perpexbistro.com')
     
-    # Calculate total
-    total_amount = f"${order.total_amount:.2f}"
+    # Calculate total with safe attribute access
+    if hasattr(order, 'total_amount') and order.total_amount is not None:
+        total_amount = f"${order.total_amount:.2f}"
+    else:
+        total_amount = "$0.00"
     
     # Build order items list
     items_text = []
@@ -340,12 +343,14 @@ def send_bulk_order_notifications(
             # Get order to extract email
             order = Order.objects.select_related('user', 'customer').get(id=order_id)
             
-            # Determine email address
-            if order.user and order.user.email:
+            # Determine email address with safe attribute access
+            email = None
+            if hasattr(order, 'user') and order.user and hasattr(order.user, 'email') and order.user.email:
                 email = order.user.email
-            elif order.customer and order.customer.email:
+            elif hasattr(order, 'customer') and order.customer and hasattr(order.customer, 'email') and order.customer.email:
                 email = order.customer.email
-            else:
+            
+            if not email:
                 results['failed_emails'] += 1
                 results['errors'].append(f"Order {order_id}: No email address found")
                 continue

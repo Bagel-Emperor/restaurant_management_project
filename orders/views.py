@@ -130,11 +130,10 @@ class OrderDetailView(generics.RetrieveAPIView):
 	
 	def get_queryset(self):
 		"""
-		Optimize queryset with select_related and prefetch_related for performance
+		Optimize queryset with select_related and prefetch_related for performance.
+		Using separate select_related calls to handle nullable relationships safely.
 		"""
-		return Order.objects.select_related(
-			'status', 'customer', 'user'
-		).prefetch_related(
+		return Order.objects.select_related('status').select_related('customer').select_related('user').prefetch_related(
 			'order_items__menu_item'
 		)
 	

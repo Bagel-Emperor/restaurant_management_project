@@ -149,14 +149,19 @@ def send_order_confirmation_on_creation(sender, instance, created, **kwargs):
     """
     
     if created:  # Only for new orders
-        # Determine email
-        if instance.user and instance.user.email:
+        # Determine email with safe attribute access
+        email = None
+        name = None
+        
+        if hasattr(instance, 'user') and instance.user and hasattr(instance.user, 'email') and instance.user.email:
             email = instance.user.email
             name = instance.user.get_full_name() or instance.user.username
-        elif instance.customer and instance.customer.email:
+        elif hasattr(instance, 'customer') and instance.customer and hasattr(instance.customer, 'email') and instance.customer.email:
             email = instance.customer.email
-            name = instance.customer.name
-        else:
+            if hasattr(instance.customer, 'name'):
+                name = instance.customer.name
+        
+        if not email:
             # No email available, skip confirmation
             return
         

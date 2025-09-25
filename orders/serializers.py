@@ -89,10 +89,13 @@ class UserProfileSerializer(serializers.ModelSerializer):
     name = serializers.CharField(max_length=100, allow_blank=True)
     phone = serializers.CharField(max_length=20, allow_blank=True)
     
+    # Computed field
+    full_name = serializers.SerializerMethodField()
+    
     class Meta:
         model = UserProfile
-        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'name', 'phone']
-        read_only_fields = ['id', 'username']
+        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'name', 'phone', 'full_name']
+        read_only_fields = ['id', 'username', 'full_name']
     
     def validate_email(self, value):
         """Validate email using our custom email validation utility"""
@@ -132,11 +135,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
         
         return instance
     
-    def to_representation(self, instance):
+    def get_full_name(self, obj):
         """
-        Customize the representation to include computed fields.
+        Compute the full name from User's first/last name, fallback to profile name or username.
         """
-        data = super().to_representation(instance)
-        # Add full name for convenience
-        data['full_name'] = instance.user.get_full_name() or instance.name or instance.user.username
-        return data
+        return obj.user.get_full_name() or obj.name or obj.user.username

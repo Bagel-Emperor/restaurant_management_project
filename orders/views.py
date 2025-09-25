@@ -117,20 +117,22 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 	ViewSet for managing user profiles.
 	Supports retrieving and updating user profile information.
 	Only authenticated users can access their own profile.
+	
+	Note: This ViewSet always operates on the authenticated user's profile,
+	regardless of the pk parameter in URLs for security reasons.
 	"""
 	serializer_class = UserProfileSerializer
 	permission_classes = [permissions.IsAuthenticated]
 	authentication_classes = [SessionAuthentication, TokenAuthentication]
 	http_method_names = ['get', 'put', 'patch', 'options', 'head']  # No DELETE, no POST (profiles are created automatically)
 	
-	def get_queryset(self):
-		"""Return only the authenticated user's profile"""
-		return UserProfile.objects.filter(user=self.request.user)
-	
 	def get_object(self):
 		"""
 		Get or create the user profile for the authenticated user.
 		This ensures every user has a profile.
+		
+		Note: For security, this always returns the authenticated user's profile
+		regardless of the pk parameter in the URL.
 		"""
 		user = self.request.user
 		profile, created = UserProfile.objects.get_or_create(user=user)
@@ -150,6 +152,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 	def list(self, request, *args, **kwargs):
 		"""
 		Override list to return the user's own profile instead of a list.
+		This provides a convenient endpoint for getting the current user's profile.
 		"""
 		profile = self.get_object()
 		serializer = self.get_serializer(profile)
@@ -157,7 +160,11 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 	
 	def retrieve(self, request, *args, **kwargs):
 		"""
-		Retrieve the user's profile. Pk is ignored - always returns current user's profile.
+		Retrieve the authenticated user's profile.
+		
+		Security Note: The pk parameter is ignored for security reasons.
+		This always returns the authenticated user's profile to prevent
+		users from accessing other users' profiles.
 		"""
 		profile = self.get_object()
 		serializer = self.get_serializer(profile)

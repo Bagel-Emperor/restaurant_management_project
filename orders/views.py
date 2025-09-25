@@ -8,7 +8,7 @@ from rest_framework.decorators import action
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from .models import Order, Customer, UserProfile
-from .serializers import OrderSerializer, CustomerSerializer, OrderHistorySerializer, UserProfileSerializer
+from .serializers import OrderSerializer, CustomerSerializer, OrderHistorySerializer, UserProfileSerializer, OrderDetailSerializer
 
 class CustomerOrderListView(generics.ListAPIView):
 	serializer_class = OrderSerializer
@@ -110,6 +110,103 @@ class UserOrderHistoryView(generics.ListAPIView):
 			'count': len(serializer.data),
 			'orders': serializer.data
 		})
+
+
+class OrderDetailView(generics.RetrieveAPIView):
+	"""
+	API endpoint to retrieve detailed information about a specific order by ID.
+	
+	Features:
+	- Retrieves comprehensive order details including items, customer info, and status
+	- Requires authentication for all order access
+	- Authenticated users can only access their own orders (superusers can access any)
+	- Returns detailed error messages for non-existent or unauthorized orders
+	"""
+	serializer_class = OrderDetailSerializer
+	permission_classes = [permissions.IsAuthenticated]
+	authentication_classes = [SessionAuthentication, TokenAuthentication]
+	lookup_field = 'id'
+	lookup_url_kwarg = 'order_id'
+	
+	def get_queryset(self):
+		"""
+		Optimize queryset with select_related and prefetch_related for performance
+		"""
+		return Order.objects.select_related(
+			'status', 'customer', 'user'
+		).prefetch_related(
+			'order_items__menu_item'
+		)
+	
+	def get_object(self):
+		"""
+		Retrieve order with proper authorization checks.
+		
+		Authorization logic:
+		1. Authentication is required for all order access
+		2. Authenticated users can only access their own orders
+		3. Superusers can access any order
+		"""
+		queryset = self.get_queryset()
+		order_id = self.kwargs.get(self.lookup_url_kwarg)
+		
+		try:
+			order = queryset.get(id=order_id)
+		except Order.DoesNotExist:
+			raise NotFound(f"Order with ID {order_id} not found.")
+		
+		# Permission checking
+		user = self.request.user
+		
+		# Require authentication for all order access
+		if not user.is_authenticated:
+			raise PermissionDenied("Authentication required to view order details.")
+		
+		# Superusers can access any order
+		if user.is_superuser:
+			return order
+		
+		# Authenticated users can only access their own orders
+		if order.user == user:
+			return order
+		
+		# If order belongs to a different user or is a guest order, deny access
+		raise PermissionDenied("You do not have permission to view this order.")
+	
+	def retrieve(self, request, *args, **kwargs):
+		"""
+		Override retrieve to add additional metadata and error handling
+		"""
+		try:
+			instance = self.get_object()
+			serializer = self.get_serializer(instance)
+			
+			return Response({
+				'success': True,
+				'order': serializer.data,
+				'message': f'Order {instance.id} retrieved successfully'
+			})
+			
+		except NotFound as e:
+			return Response({
+				'success': False,
+				'error': str(e),
+				'order': None
+			}, status=status.HTTP_404_NOT_FOUND)
+			
+		except PermissionDenied as e:
+			return Response({
+				'success': False,
+				'error': str(e),
+				'order': None
+			}, status=status.HTTP_403_FORBIDDEN)
+		
+		except Exception as e:
+			return Response({
+				'success': False,
+				'error': 'An unexpected error occurred while retrieving the order.',
+				'order': None
+			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class UserProfileViewSet(viewsets.ModelViewSet):

@@ -137,6 +137,36 @@ You can add menu items to the site using either the Django admin interface or th
 	```
 5. Type `exit()` to leave the shell.
 
+## Production Deployment Checklist
+
+Before deploying to production, ensure you have:
+
+### Security
+- [ ] Set `DEBUG=False` in production
+- [ ] Generated a strong `SECRET_KEY` (min 50 characters)
+- [ ] Configured proper `ALLOWED_HOSTS`
+- [ ] Set up HTTPS (SSL/TLS certificates)
+- [ ] Configured secure session and CSRF cookies
+- [ ] Enabled security headers (HSTS, XSS protection, etc.)
+
+### Database
+- [ ] Set up production database (PostgreSQL recommended)
+- [ ] Run `python manage.py migrate` on production
+- [ ] Set up database backups
+
+### Infrastructure
+- [ ] Configure email backend for notifications
+- [ ] Set up static file serving (nginx/Apache)
+- [ ] Configure logging and monitoring
+- [ ] Set up error reporting (Sentry, etc.)
+
+### Dependencies
+- [ ] Install all requirements: `pip install -r requirements.txt`
+- [ ] Use a WSGI server like Gunicorn or uWSGI
+- [ ] Configure reverse proxy (nginx recommended)
+
 ---
-Please do not use this code as-is for any production environment.
+**Educational Project Notice:**
+This project was developed for educational purposes. Please do not use this code as-is for any production environment without proper security auditing and additional hardening.
+
 Feedback and suggestions for improvement are encouraged as part of the learning process.

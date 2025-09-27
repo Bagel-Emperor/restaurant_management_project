@@ -4,8 +4,19 @@ from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from home.models import MenuItem
 import re
+
+
+def get_max_vehicle_year():
+    """
+    Dynamic validator for maximum vehicle year.
+    
+    Returns the current year + 1 to allow for next year models
+    while preventing unrealistic future years.
+    """
+    return timezone.now().year + 1
 
 
 class OrderManager(models.Manager):
@@ -347,7 +358,6 @@ class Driver(models.Model):
     vehicle_year = models.PositiveIntegerField(
         validators=[
             MinValueValidator(1980, message="Vehicle year must be 1980 or later"),
-            MaxValueValidator(2030, message="Vehicle year cannot be in the future")
         ],
         help_text="Vehicle manufacturing year"
     )
@@ -496,10 +506,10 @@ class Driver(models.Model):
             })
         
         # Validate vehicle year is reasonable
-        current_year = timezone.now().year
-        if self.vehicle_year and self.vehicle_year > current_year + 1:
+        max_year = get_max_vehicle_year()
+        if self.vehicle_year and self.vehicle_year > max_year:
             raise ValidationError({
-                'vehicle_year': f'Vehicle year cannot be more than {current_year + 1}.'
+                'vehicle_year': f'Vehicle year cannot be more than {max_year}.'
             })
         
         # Validate coordinates are both provided or both empty

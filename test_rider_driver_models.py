@@ -12,6 +12,7 @@ from django.test import TestCase
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.db import IntegrityError
+from django.utils import timezone
 from orders.models import Rider, Driver
 
 
@@ -378,7 +379,6 @@ class TestDriverModel(TestCase):
             driver.full_clean()
         
         # Test future year
-        from django.utils import timezone
         future_year = timezone.now().year + 2
         with self.assertRaises(ValidationError):
             driver = Driver(

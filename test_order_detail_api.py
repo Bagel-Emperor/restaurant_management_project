@@ -126,10 +126,12 @@ def test_order_detail_api():
     response = client_no_auth.get(f'/PerpexBistro/orders/orders/{guest_order.id}/')
     print(f"Status: {response.status_code}")
     
-	if response.status_code in [401, 403]:
-		print("✓ SUCCESS: Unauthenticated users blocked")
-	else:
-		print(f"✗ FAILED: Expected 401/403, got {response.status_code}")    # Test 4: Invalid order ID
+    if response.status_code in [401, 403]:
+        print("✓ SUCCESS: Unauthenticated users blocked")
+    else:
+        print(f"✗ FAILED: Expected 401/403, got {response.status_code}")
+    
+    # Test 4: Invalid order ID
     print("\n🧪 Test 4: Invalid order ID")
     response = client.get('/PerpexBistro/orders/orders/99999/')
     print(f"Status: {response.status_code}")

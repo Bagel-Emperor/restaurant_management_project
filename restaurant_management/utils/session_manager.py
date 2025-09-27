@@ -49,18 +49,18 @@ class SessionManager:
         >>> sm.delete_session("driver_123")     # "Deleted"
     """
     
-    def __init__(self, expiry_seconds: int):
+    def __init__(self, expiry_seconds: Union[int, float]):
         """
         Initialize the session manager.
         
         Args:
-            expiry_seconds (int): How long a session should remain active in seconds
+            expiry_seconds (Union[int, float]): How long a session should remain active in seconds
             
         Raises:
-            ValueError: If expiry_seconds is not a positive integer
+            ValueError: If expiry_seconds is not a positive number or contains fractional values
         """
-        if not isinstance(expiry_seconds, int) or expiry_seconds <= 0:
-            raise ValueError("expiry_seconds must be a positive integer")
+        if not isinstance(expiry_seconds, (int, float)) or expiry_seconds <= 0 or expiry_seconds != int(expiry_seconds):
+            raise ValueError("expiry_seconds must be a positive integer or whole number float")
         
         self.expiry_seconds = expiry_seconds
         self.sessions: Dict[str, float] = {}  # Maps session_id to creation timestamp
@@ -112,7 +112,7 @@ class SessionManager:
         Returns:
             bool: True if session exists and is not expired, False otherwise
         """
-        if not session_id or session_id not in self.sessions:
+        if not isinstance(session_id, str) or not session_id or session_id not in self.sessions:
             logger.debug(f"Session not found: {session_id}")
             return False
         
@@ -143,6 +143,10 @@ class SessionManager:
         Returns:
             str: "Deleted" if session was found and removed, "Not Found" otherwise
         """
+        if not isinstance(session_id, str):
+            logger.debug(f"Session not found for deletion: {session_id}")
+            return "Not Found"
+        
         if session_id in self.sessions:
             del self.sessions[session_id]
             logger.info(f"Session manually deleted: {session_id}")
@@ -312,7 +316,7 @@ class SlidingSessionManager(SessionManager):
         Returns:
             bool: True if session exists and is refreshed, False if expired/not found
         """
-        if not session_id or session_id not in self.sessions:
+        if not isinstance(session_id, str) or not session_id or session_id not in self.sessions:
             return False
         
         current_time = time.time()

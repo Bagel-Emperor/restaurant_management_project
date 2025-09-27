@@ -28,10 +28,44 @@ from restaurant_management.utils.session_manager import (
 logger = logging.getLogger(__name__)
 
 # Global session managers for different user types
-# In production, these might be Redis-backed or database-backed
+# WARNING: These are for DEMONSTRATION PURPOSES ONLY in development environments.
+# In production Django applications with concurrent access, consider using:
+# - Thread-local storage: threading.local()
+# - Redis-backed sessions: django-redis
+# - Database-backed sessions: django.contrib.sessions
+# - Proper locking mechanisms for thread safety
+# The current implementation is NOT thread-safe for concurrent requests.
 driver_session_manager = SlidingSessionManager(expiry_seconds=1800)  # 30 minutes with sliding
 rider_session_manager = SessionManager(expiry_seconds=3600)  # 1 hour fixed
 delivery_session_manager = PersistentSessionManager(expiry_seconds=2700)  # 45 minutes persistent
+
+
+# Thread-safe alternative for production use
+import threading
+thread_local_sessions = threading.local()
+
+def get_thread_safe_session_manager(user_type='rider'):
+    """
+    Thread-safe session manager factory using thread-local storage.
+    
+    This approach ensures each thread has its own session manager instance,
+    preventing race conditions in concurrent Django applications.
+    
+    Args:
+        user_type (str): Type of session manager to create
+        
+    Returns:
+        SessionManager: Thread-local session manager instance
+    """
+    if not hasattr(thread_local_sessions, user_type):
+        if user_type == 'driver':
+            setattr(thread_local_sessions, user_type, SlidingSessionManager(expiry_seconds=1800))
+        elif user_type == 'delivery':
+            setattr(thread_local_sessions, user_type, PersistentSessionManager(expiry_seconds=2700))
+        else:  # default to rider
+            setattr(thread_local_sessions, user_type, SessionManager(expiry_seconds=3600))
+    
+    return getattr(thread_local_sessions, user_type)
 
 
 class CustomSessionMiddleware:

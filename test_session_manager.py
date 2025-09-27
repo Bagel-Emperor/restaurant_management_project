@@ -51,7 +51,15 @@ class TestSessionManager(unittest.TestCase):
             SessionManager("invalid")
         
         with self.assertRaises(ValueError):
-            SessionManager(3.14)  # Float should not be accepted
+            SessionManager(3.14)  # Fractional float should not be accepted
+    
+    def test_init_valid_float_expiry(self):
+        """Test SessionManager initialization with valid whole number float."""
+        sm = SessionManager(30.0)  # Whole number float should be accepted
+        self.assertEqual(sm.expiry_seconds, 30.0)
+        
+        sm2 = SessionManager(45.0)
+        self.assertEqual(sm2.expiry_seconds, 45.0)
     
     def test_create_session_valid(self):
         """Test creating a session with valid session ID."""
@@ -266,6 +274,30 @@ class TestSessionManager(unittest.TestCase):
         result = self.session_manager.end_session("nonexistent")
         self.assertFalse(result)
 
+    def test_type_validation_is_session_active(self):
+        """Test type validation for is_session_active method."""
+        # Non-string types should return False
+        self.assertFalse(self.session_manager.is_session_active(123))
+        self.assertFalse(self.session_manager.is_session_active([]))
+        self.assertFalse(self.session_manager.is_session_active({}))
+        self.assertFalse(self.session_manager.is_session_active(None))
+        
+        # Valid string should work normally
+        self.session_manager.create_session("test_session")
+        self.assertTrue(self.session_manager.is_session_active("test_session"))
+
+    def test_type_validation_delete_session(self):
+        """Test type validation for delete_session method."""
+        # Non-string types should return "Not Found"
+        self.assertEqual(self.session_manager.delete_session(123), "Not Found")
+        self.assertEqual(self.session_manager.delete_session([]), "Not Found")
+        self.assertEqual(self.session_manager.delete_session({}), "Not Found")
+        self.assertEqual(self.session_manager.delete_session(None), "Not Found")
+        
+        # Valid string should work normally
+        self.session_manager.create_session("test_session")
+        self.assertEqual(self.session_manager.delete_session("test_session"), "Deleted")
+
 
 class TestPersistentSessionManager(unittest.TestCase):
     """Test cases for the PersistentSessionManager class."""
@@ -413,6 +445,18 @@ class TestSlidingSessionManager(unittest.TestCase):
         self.assertTrue(self.sliding_sm.is_session_active("driver_1"))
         self.assertTrue(self.sliding_sm.is_session_active("driver_2"))
         self.assertFalse(self.sliding_sm.is_session_active("driver_3"))
+
+    def test_sliding_type_validation(self):
+        """Test type validation for SlidingSessionManager.is_session_active method."""
+        # Non-string types should return False (no exceptions)
+        self.assertFalse(self.sliding_sm.is_session_active(123))
+        self.assertFalse(self.sliding_sm.is_session_active([]))
+        self.assertFalse(self.sliding_sm.is_session_active({}))
+        self.assertFalse(self.sliding_sm.is_session_active(None))
+        
+        # Valid string should work normally with sliding behavior
+        self.sliding_sm.create_session("test_sliding")
+        self.assertTrue(self.sliding_sm.is_session_active("test_sliding"))
 
 
 class TestSessionManagerIntegration(unittest.TestCase):

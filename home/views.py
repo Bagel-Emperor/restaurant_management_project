@@ -5,13 +5,14 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status, viewsets, permissions, filters
 from rest_framework.decorators import action
+from rest_framework.generics import CreateAPIView
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 import logging
 from .forms import FeedbackForm, ContactSubmissionForm
-from .models import Restaurant, MenuItem, MenuCategory, Cart, CartItem
-from .serializers import RestaurantSerializer, MenuItemSerializer, MenuCategorySerializer
+from .models import Restaurant, MenuItem, MenuCategory, Cart, CartItem, ContactSubmission
+from .serializers import RestaurantSerializer, MenuItemSerializer, MenuCategorySerializer, ContactSubmissionSerializer
 from .cart_utils import (
     get_or_create_cart, add_to_cart, remove_from_cart, 
     update_cart_item_quantity, clear_cart, get_cart_summary
@@ -599,3 +600,79 @@ def delete_restaurant(request, pk):
         return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
     restaurant.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# Contact Form API Views
+class ContactSubmissionCreateAPIView(CreateAPIView):
+    """
+    DRF API view for creating contact form submissions.
+    
+    Accepts POST requests with contact form data (name, email, message)
+    and creates a new ContactSubmission record in the database.
+    
+    Features:
+    - Comprehensive input validation via ContactSubmissionSerializer
+    - Email sending functionality to restaurant
+    - Detailed error handling and logging
+    - No authentication required (public endpoint)
+    """
+    queryset = ContactSubmission.objects.all()
+    serializer_class = ContactSubmissionSerializer
+    permission_classes = [permissions.AllowAny]  # Public endpoint
+    
+    def perform_create(self, serializer):
+        """
+        Save the contact submission and send email notification.
+        """
+        # Save the submission to database
+        submission = serializer.save()
+        
+        # Log the submission
+        logger.info(f"New contact submission from {submission.email}")
+        
+        # Send email notification to restaurant
+        try:
+            restaurant_email = getattr(settings, 'RESTAURANT_EMAIL', 'contact@perpexbistro.com')
+            system_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@perpexbistro.com')
+            
+            subject = f"New Contact Submission from {submission.name}"
+            message = f"Name: {submission.name}\nEmail: {submission.email}\nMessage: {submission.message}"
+            
+            send_mail(
+                subject,
+                message,
+                system_email,  # from email
+                [restaurant_email],  # to email
+                fail_silently=False,
+            )
+            logger.info(f"Contact form email sent successfully for submission {submission.id}")
+            
+        except Exception as e:
+            # Log email error but don't fail the API request
+            logger.error(f"Failed to send contact form email for submission {submission.id}: {str(e)}")
+    
+    def create(self, request, *args, **kwargs):
+        """
+        Override create method to provide custom response messages.
+        """
+        try:
+            response = super().create(request, *args, **kwargs)
+            
+            # Customize success response
+            if response.status_code == 201:
+                response.data.update({
+                    'message': 'Thank you for your message! We will get back to you soon.',
+                    'success': True
+                })
+            
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error creating contact submission: {str(e)}")
+            return Response(
+                {
+                    'error': 'An error occurred while processing your submission. Please try again.',
+                    'success': False
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

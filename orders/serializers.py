@@ -1,8 +1,9 @@
 from rest_framework import serializers
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, BaseUserManager
+from django.core.validators import EmailValidator
+from django.core.exceptions import ValidationError as DjangoValidationError
 from .models import Customer, Order, OrderItem, OrderStatus, UserProfile
 from home.models import MenuItem
-from restaurant_management.utils import is_valid_email, normalize_email, validate_email_with_details
 
 class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -11,15 +12,17 @@ class CustomerSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
     def validate_email(self, value):
-        """Validate email using our custom email validation utility"""
+        """Validate email using Django's built-in email validation"""
         if value:
-            # Normalize the email
-            value = normalize_email(value)
+            # Normalize the email using Django's built-in method
+            value = BaseUserManager.normalize_email(value)
             
-            # Validate email format with detailed error messages
-            is_valid, error_message = validate_email_with_details(value)
-            if not is_valid:
-                raise serializers.ValidationError(error_message)
+            # Validate email format using Django's built-in validator
+            email_validator = EmailValidator()
+            try:
+                email_validator(value)
+            except DjangoValidationError as e:
+                raise serializers.ValidationError(str(e))
         
         return value
 
@@ -152,15 +155,17 @@ class UserProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'username', 'full_name']
     
     def validate_email(self, value):
-        """Validate email using our custom email validation utility"""
+        """Validate email using Django's built-in email validation"""
         if value:
-            # Normalize the email
-            value = normalize_email(value)
+            # Normalize the email using Django's built-in method
+            value = BaseUserManager.normalize_email(value)
             
-            # Validate email format with detailed error messages
-            is_valid, error_message = validate_email_with_details(value)
-            if not is_valid:
-                raise serializers.ValidationError(error_message)
+            # Validate email format using Django's built-in validator
+            email_validator = EmailValidator()
+            try:
+                email_validator(value)
+            except DjangoValidationError as e:
+                raise serializers.ValidationError(str(e))
             
             # Check if email is already taken by another user
             user = self.instance.user if self.instance else None
@@ -251,13 +256,15 @@ class RiderRegistrationSerializer(serializers.ModelSerializer):
     def validate_email(self, value):
         """Validate email format and uniqueness."""
         if value:
-            # Normalize the email
-            value = normalize_email(value)
+            # Normalize the email using Django's built-in method
+            value = BaseUserManager.normalize_email(value)
             
-            # Validate email format
-            is_valid, error_message = validate_email_with_details(value)
-            if not is_valid:
-                raise serializers.ValidationError(error_message)
+            # Validate email format using Django's built-in validator
+            email_validator = EmailValidator()
+            try:
+                email_validator(value)
+            except DjangoValidationError as e:
+                raise serializers.ValidationError(str(e))
             
             # Check uniqueness
             if User.objects.filter(email=value).exists():
@@ -405,13 +412,15 @@ class DriverRegistrationSerializer(serializers.ModelSerializer):
     def validate_email(self, value):
         """Validate email format and uniqueness."""
         if value:
-            # Normalize the email
-            value = normalize_email(value)
+            # Normalize the email using Django's built-in method
+            value = BaseUserManager.normalize_email(value)
             
-            # Validate email format
-            is_valid, error_message = validate_email_with_details(value)
-            if not is_valid:
-                raise serializers.ValidationError(error_message)
+            # Validate email format using Django's built-in validator
+            email_validator = EmailValidator()
+            try:
+                email_validator(value)
+            except DjangoValidationError as e:
+                raise serializers.ValidationError(str(e))
             
             # Check uniqueness
             if User.objects.filter(email=value).exists():
@@ -482,12 +491,13 @@ class DriverRegistrationSerializer(serializers.ModelSerializer):
     
     def validate_vehicle_year(self, value):
         """Validate vehicle year is reasonable."""
-        from .models import get_max_vehicle_year
+        from datetime import date
         
         if value < 1980:
             raise serializers.ValidationError("Vehicle year must be 1980 or later.")
         
-        max_year = get_max_vehicle_year()
+        # Calculate max year inline (current year + 1 for next year models)
+        max_year = date.today().year + 1
         if value > max_year:
             raise serializers.ValidationError(f"Vehicle year cannot be more than {max_year}.")
         

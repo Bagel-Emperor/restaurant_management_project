@@ -293,3 +293,127 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 		profile = self.get_object()
 		serializer = self.get_serializer(profile)
 		return Response(serializer.data)
+
+
+# ================================
+# REGISTRATION API VIEWS
+# ================================
+
+class RiderRegistrationView(APIView):
+	"""
+	API endpoint for rider registration.
+	
+	Creates a new User account and associated Rider profile with comprehensive
+	validation. Handles password hashing, email verification, and profile creation.
+	
+	POST /api/register/rider/
+	"""
+	permission_classes = [permissions.AllowAny]  # Public registration
+	
+	def post(self, request, *args, **kwargs):
+		"""
+		Register a new rider.
+		
+		Expected JSON format:
+		{
+			"username": "john_rider",
+			"email": "john@example.com",
+			"password": "securepassword123",
+			"first_name": "John",
+			"last_name": "Doe",
+			"phone": "+1234567890",
+			"preferred_payment": "card",
+			"default_pickup_address": "123 Main St, City",
+			"default_pickup_latitude": 40.7128,
+			"default_pickup_longitude": -74.0060
+		}
+		"""
+		from .serializers import RiderRegistrationSerializer
+		
+		try:
+			serializer = RiderRegistrationSerializer(data=request.data)
+			
+			if serializer.is_valid():
+				user = serializer.save()
+				
+				return Response({
+					'success': True,
+					'message': 'Rider registered successfully',
+					'data': serializer.to_representation(user)
+				}, status=status.HTTP_201_CREATED)
+			
+			else:
+				return Response({
+					'success': False,
+					'message': 'Registration failed due to validation errors',
+					'errors': serializer.errors
+				}, status=status.HTTP_400_BAD_REQUEST)
+		
+		except Exception as e:
+			return Response({
+				'success': False,
+				'message': 'An unexpected error occurred during registration',
+				'error': str(e)
+			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DriverRegistrationView(APIView):
+	"""
+	API endpoint for driver registration.
+	
+	Creates a new User account and associated Driver profile with comprehensive
+	validation including vehicle information and license verification.
+	
+	POST /api/register/driver/
+	"""
+	permission_classes = [permissions.AllowAny]  # Public registration
+	
+	def post(self, request, *args, **kwargs):
+		"""
+		Register a new driver.
+		
+		Expected JSON format:
+		{
+			"username": "mike_driver",
+			"email": "mike@example.com",
+			"password": "securepassword123",
+			"first_name": "Mike",
+			"last_name": "Smith",
+			"phone": "+1987654321",
+			"license_number": "DL12345678",
+			"license_expiry": "2025-12-31",
+			"vehicle_make": "Toyota",
+			"vehicle_model": "Camry",
+			"vehicle_year": 2020,
+			"vehicle_color": "Silver",
+			"vehicle_type": "sedan",
+			"license_plate": "ABC123"
+		}
+		"""
+		from .serializers import DriverRegistrationSerializer
+		
+		try:
+			serializer = DriverRegistrationSerializer(data=request.data)
+			
+			if serializer.is_valid():
+				user = serializer.save()
+				
+				return Response({
+					'success': True,
+					'message': 'Driver registered successfully',
+					'data': serializer.to_representation(user)
+				}, status=status.HTTP_201_CREATED)
+			
+			else:
+				return Response({
+					'success': False,
+					'message': 'Registration failed due to validation errors',
+					'errors': serializer.errors
+				}, status=status.HTTP_400_BAD_REQUEST)
+		
+		except Exception as e:
+			return Response({
+				'success': False,
+				'message': 'An unexpected error occurred during registration',
+				'error': str(e)
+			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -6,7 +6,9 @@ from .views import (
     CustomerListCreateAPIView, 
     UserOrderHistoryView,
     OrderDetailView,
-    UserProfileViewSet
+    UserProfileViewSet,
+    RiderRegistrationView,
+    DriverRegistrationView
 )
 
 # Create a router for viewsets
@@ -19,6 +21,10 @@ urlpatterns = [
     path('orders/history/', UserOrderHistoryView.as_view(), name='user-order-history'),
     path('orders/<int:order_id>/', OrderDetailView.as_view(), name='order-detail'),
     path('customers/', CustomerListCreateAPIView.as_view(), name='customer-list-create'),
+    
+    # Registration endpoints
+    path('register/rider/', RiderRegistrationView.as_view(), name='rider-registration'),
+    path('register/driver/', DriverRegistrationView.as_view(), name='driver-registration'),
     
     # Include router URLs for profile management
     path('', include(router.urls)),

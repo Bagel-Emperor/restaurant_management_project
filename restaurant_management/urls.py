@@ -19,8 +19,10 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf.urls import handler404
 
-from django.contrib import admin
-from django.urls import path, include
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -28,6 +30,10 @@ urlpatterns = [
     path('PerpexBistro/accounts/',include('account.urls')),
     path('PerpexBistro/products/',include('products.urls')),
     path('PerpexBistro/orders/',include('orders.urls')),
+    
+    # JWT Authentication endpoints
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
 
 # Custom 404 error handler

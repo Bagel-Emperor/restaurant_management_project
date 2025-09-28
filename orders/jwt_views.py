@@ -14,9 +14,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
 import logging
 
 from .jwt_serializers import CustomTokenObtainPairSerializer, UserLoginSerializer

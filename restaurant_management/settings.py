@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
+from datetime import timedelta
+
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -225,8 +227,6 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 CSRF_COOKIE_HTTPONLY = True
 
 # JWT Authentication Settings
-from datetime import timedelta
-
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # 1 hour
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),     # 1 week

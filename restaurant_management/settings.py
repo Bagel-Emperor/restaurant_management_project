@@ -29,6 +29,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Set DEBUG = False to enable custom error pages (like 404.html).
+# NOTE: This is a development/educational project, not production-ready.
+# DEBUG defaults to True for better development experience.
+# For production deployment, always set DEBUG=False via environment variable.
 DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes', 'on')
 
 # SECURITY WARNING: keep the secret key used in production secret!

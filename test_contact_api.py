@@ -5,8 +5,6 @@ This module contains comprehensive tests for the ContactSubmissionCreateAPIView
 including validation, error handling, email functionality, and edge cases.
 """
 
-import os
-import django
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APITestCase
@@ -14,10 +12,6 @@ from rest_framework import status
 from unittest.mock import patch
 from django.core import mail
 from django.conf import settings
-
-# Setup Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'restaurant_management.settings')
-django.setup()
 
 from home.models import ContactSubmission
 from home.serializers import ContactSubmissionSerializer
@@ -114,7 +108,7 @@ class ContactSubmissionAPITestCase(APITestCase):
         
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('name', response.data)
-        self.assertIn('cannot exceed 100 characters', str(response.data['name']))
+        self.assertIn('no more than 100 characters', str(response.data['name']))
     
     def test_validation_missing_email(self):
         """Test validation error when email is missing."""
@@ -306,30 +300,3 @@ class ContactSubmissionSerializerTestCase(TestCase):
         self.assertIn('name', serializer.errors)
         self.assertIn('email', serializer.errors)
         self.assertIn('message', serializer.errors)
-
-
-def run_contact_api_tests():
-    """
-    Standalone function to run contact API tests.
-    Can be called directly for manual testing.
-    """
-    print("🧪 RUNNING CONTACT FORM API TESTS\n")
-    
-    # Import Django test framework
-    from django.test.utils import get_runner
-    from django.conf import settings
-    
-    test_runner = get_runner(settings)()
-    test_suite = test_runner.build_suite(['test_contact_api'])
-    result = test_runner.run_tests(['test_contact_api'])
-    
-    if result == 0:
-        print("✅ All Contact API tests passed!")
-    else:
-        print(f"❌ {result} Contact API test(s) failed.")
-    
-    return result == 0
-
-
-if __name__ == '__main__':
-    run_contact_api_tests()

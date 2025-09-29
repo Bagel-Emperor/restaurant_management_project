@@ -13,6 +13,10 @@ import logging
 from .forms import FeedbackForm, ContactSubmissionForm
 from .models import Restaurant, MenuItem, MenuCategory, Cart, CartItem, ContactSubmission
 from .serializers import RestaurantSerializer, MenuItemSerializer, MenuCategorySerializer, ContactSubmissionSerializer
+
+# Email configuration constants
+DEFAULT_RESTAURANT_EMAIL = 'contact@perpexbistro.com'
+DEFAULT_SYSTEM_EMAIL = 'noreply@perpexbistro.com'
 from .cart_utils import (
     get_or_create_cart, add_to_cart, remove_from_cart, 
     update_cart_item_quantity, clear_cart, get_cart_summary
@@ -404,8 +408,8 @@ def contact_view(request):
         if form.is_valid():
             submission = form.save()
             # Send email notification to restaurant
-            restaurant_email = getattr(settings, 'RESTAURANT_EMAIL', 'contact@perpexbistro.com')
-            system_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@perpexbistro.com')
+            restaurant_email = getattr(settings, 'RESTAURANT_EMAIL', DEFAULT_RESTAURANT_EMAIL)
+            system_email = getattr(settings, 'DEFAULT_FROM_EMAIL', DEFAULT_SYSTEM_EMAIL)
             subject = f"New Contact Submission from {submission.name}"
             message = f"Name: {submission.name}\nEmail: {submission.email}\nMessage: {submission.message}"
             send_mail(
@@ -421,7 +425,7 @@ def contact_view(request):
         form = ContactSubmissionForm()
     context = {
         'restaurant_name': getattr(settings, 'RESTAURANT_NAME', 'Our Restaurant'),
-        'contact_email': 'contact@perpexbistro.com',
+        'contact_email': getattr(settings, 'RESTAURANT_EMAIL', DEFAULT_RESTAURANT_EMAIL),
         'contact_phone': getattr(settings, 'RESTAURANT_PHONE', '(555) 123-4567'),
         'contact_address': '123 Main Street, Cityville, USA',
         'form': form,
@@ -632,8 +636,8 @@ class ContactSubmissionCreateAPIView(CreateAPIView):
         
         # Send email notification to restaurant
         try:
-            restaurant_email = getattr(settings, 'RESTAURANT_EMAIL', 'contact@perpexbistro.com')
-            system_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@perpexbistro.com')
+            restaurant_email = getattr(settings, 'RESTAURANT_EMAIL', DEFAULT_RESTAURANT_EMAIL)
+            system_email = getattr(settings, 'DEFAULT_FROM_EMAIL', DEFAULT_SYSTEM_EMAIL)
             
             subject = f"New Contact Submission from {submission.name}"
             message = f"Name: {submission.name}\nEmail: {submission.email}\nMessage: {submission.message}"

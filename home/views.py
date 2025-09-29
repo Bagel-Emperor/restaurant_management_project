@@ -655,24 +655,13 @@ class ContactSubmissionCreateAPIView(CreateAPIView):
         """
         Override create method to provide custom response messages.
         """
-        try:
-            response = super().create(request, *args, **kwargs)
-            
-            # Customize success response
-            if response.status_code == 201:
-                response.data.update({
-                    'message': 'Thank you for your message! We will get back to you soon.',
-                    'success': True
-                })
-            
-            return response
-            
-        except Exception as e:
-            logger.error(f"Error creating contact submission: {str(e)}")
-            return Response(
-                {
-                    'error': 'An error occurred while processing your submission. Please try again.',
-                    'success': False
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        response = super().create(request, *args, **kwargs)
+        
+        # Customize success response
+        if response.status_code == 201:
+            response.data.update({
+                'message': 'Thank you for your message! We will get back to you soon.',
+                'success': True
+            })
+        
+        return response

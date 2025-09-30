@@ -92,6 +92,33 @@ class Order(models.Model):
         
         super().save(*args, **kwargs)
     
+    def calculate_total(self):
+        """
+        Calculate the total cost of the order based on associated order items.
+        
+        This method iterates through all OrderItem instances related to this order
+        and calculates the sum of (price * quantity) for each item.
+        
+        Returns:
+            Decimal: The total cost of all items in the order.
+                    Returns 0 if no items are associated with the order.
+        
+        Example:
+            >>> order = Order.objects.get(order_id='ORD-ABC123')
+            >>> total = order.calculate_total()
+            >>> print(f"Order total: ${total}")
+        """
+        from decimal import Decimal
+        
+        # Use the related_name 'order_items' to get all items for this order
+        total = Decimal('0.00')
+        
+        for item in self.order_items.all():
+            item_total = item.price * item.quantity
+            total += item_total
+        
+        return total
+    
     def __str__(self):
         order_display = self.order_id if self.order_id else f"#{self.id}"
         return f"Order {order_display} - {self.status.name if self.status else 'No Status'}"

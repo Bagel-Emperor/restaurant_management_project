@@ -35,11 +35,15 @@ def populate_order_ids(apps, schema_editor):
     # Update orders that don't have order_id
     orders_to_update = Order.objects.filter(order_id__isnull=True) | Order.objects.filter(order_id='')
     
+    updated_count = 0
     for order in orders_to_update:
         order.order_id = generate_unique_id(existing_ids)
         order.save(update_fields=['order_id'])
+        updated_count += 1
     
-    print(f"✅ Populated {orders_to_update.count()} orders with unique IDs")
+    # Migration output - acceptable for data migrations to show progress
+    if updated_count > 0:
+        print(f"✅ Populated {updated_count} orders with unique IDs")
 
 
 def reverse_populate_order_ids(apps, schema_editor):
@@ -49,8 +53,8 @@ def reverse_populate_order_ids(apps, schema_editor):
     This allows the migration to be reversed if needed.
     """
     Order = apps.get_model('orders', 'Order')
-    Order.objects.all().update(order_id=None)
-    print("⏪ Cleared all order IDs")
+    cleared_count = Order.objects.all().update(order_id=None)
+    # Reverse migration completed - removed print for production readiness
 
 
 class Migration(migrations.Migration):

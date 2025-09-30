@@ -140,11 +140,11 @@ def generate_short_id(length: int = 6, model_class=None, field_name: str = 'shor
         field_name (str): Field name to check for uniqueness
     
     Returns:
-        str: A short unique ID like 'B8N4P1'
+        str: A short unique ID like 'B8N4P2'
     
     Example:
         >>> generate_short_id(6, Order, 'reference_code')
-        'B8N4P1'
+        'B8N4P2'
     """
     return generate_unique_order_id(
         length=length,

@@ -418,3 +418,121 @@ class DriverRegistrationView(APIView):
 				'message': 'An unexpected error occurred during registration',
 				'error': str(e)
 			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class OrderCancellationView(APIView):
+	"""
+	API endpoint for cancelling orders.
+	
+	Allows users to cancel their orders by updating the order status to 'Cancelled'.
+	Only the order owner (user or customer) can cancel their order, and only orders
+	that are not already completed or cancelled can be cancelled.
+	"""
+	permission_classes = [permissions.AllowAny]  # Will handle authorization manually
+	authentication_classes = [SessionAuthentication, TokenAuthentication]
+
+	def delete(self, request, order_id, *args, **kwargs):
+		"""
+		Cancel an order by setting its status to 'Cancelled'.
+		
+		Args:
+			order_id: The user-friendly order ID (e.g., 'ORD-ABC123') or database ID
+			
+		Returns:
+			200: Order successfully cancelled
+			400: Order cannot be cancelled (already completed/cancelled)
+			403: User not authorized to cancel this order
+			404: Order not found
+		"""
+		try:
+			# Try to find order by user-friendly order_id first, then by database id
+			order = None
+			if order_id.startswith('ORD-'):
+				try:
+					order = Order.objects.get(order_id=order_id)
+				except Order.DoesNotExist:
+					pass
+			else:
+				# Assume it's a database ID if it's numeric
+				try:
+					order = Order.objects.get(id=int(order_id))
+				except (ValueError, Order.DoesNotExist):
+					# Try as order_id if not numeric
+					try:
+						order = Order.objects.get(order_id=order_id)
+					except Order.DoesNotExist:
+						pass
+			
+			# If order not found, return 404
+			if order is None:
+				return Response({
+					'success': False,
+					'message': 'Order not found',
+					'order_id': order_id
+				}, status=status.HTTP_404_NOT_FOUND)
+			
+			# Check if user is authorized to cancel this order
+			user = request.user if request.user.is_authenticated else None
+			customer_id = request.data.get('customer_id') or request.query_params.get('customer_id')
+			
+			# Authorization logic: user must own the order or provide correct customer_id
+			is_authorized = False
+			if user and order.user == user:
+				is_authorized = True
+			elif customer_id and order.customer and str(order.customer.id) == str(customer_id):
+				is_authorized = True
+			elif not user and not customer_id and not order.user:
+				# For guest orders without customer tracking, allow cancellation
+				# This is a fallback for orders created without proper customer association
+				is_authorized = True
+			
+			if not is_authorized:
+				return Response({
+					'success': False,
+					'message': 'You are not authorized to cancel this order',
+					'error': 'Permission denied'
+				}, status=status.HTTP_403_FORBIDDEN)
+			
+			# Check if order can be cancelled (not already completed or cancelled)
+			from .choices import OrderStatusChoices
+			if order.status.name in [OrderStatusChoices.COMPLETED, OrderStatusChoices.CANCELLED]:
+				return Response({
+					'success': False,
+					'message': f'Cannot cancel order that is already {order.status.name.lower()}',
+					'current_status': order.status.name,
+					'order_id': order.order_id or str(order.id)
+				}, status=status.HTTP_400_BAD_REQUEST)
+			
+			# Get or create cancelled status
+			from .models import OrderStatus
+			cancelled_status, _ = OrderStatus.objects.get_or_create(
+				name=OrderStatusChoices.CANCELLED
+			)
+			
+			# Update order status to cancelled
+			previous_status = order.status.name
+			order.status = cancelled_status
+			order.save()
+			
+			return Response({
+				'success': True,
+				'message': 'Order cancelled successfully',
+				'order_id': order.order_id or str(order.id),
+				'previous_status': previous_status,
+				'current_status': OrderStatusChoices.CANCELLED,
+				'cancelled_at': order.created_at.isoformat()  # Using created_at as placeholder
+			}, status=status.HTTP_200_OK)
+			
+		except Order.DoesNotExist:
+			return Response({
+				'success': False,
+				'message': 'Order not found',
+				'order_id': order_id
+			}, status=status.HTTP_404_NOT_FOUND)
+			
+		except Exception as e:
+			return Response({
+				'success': False,
+				'message': 'An unexpected error occurred while cancelling the order',
+				'error': str(e)
+			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

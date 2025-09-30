@@ -7,8 +7,10 @@ from rest_framework.authentication import SessionAuthentication, TokenAuthentica
 from rest_framework.decorators import action
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
-from .models import Order, Customer, UserProfile
+from django.utils import timezone
+from .models import Order, Customer, UserProfile, OrderStatus
 from .serializers import OrderSerializer, CustomerSerializer, OrderHistorySerializer, UserProfileSerializer, OrderDetailSerializer
+from .choices import OrderStatusChoices
 
 class CustomerOrderListView(generics.ListAPIView):
 	serializer_class = OrderSerializer
@@ -481,10 +483,7 @@ class OrderCancellationView(APIView):
 				is_authorized = True
 			elif customer_id and order.customer and str(order.customer.id) == str(customer_id):
 				is_authorized = True
-			elif not user and not customer_id and not order.user:
-				# For guest orders without customer tracking, allow cancellation
-				# This is a fallback for orders created without proper customer association
-				is_authorized = True
+			# Removed insecure fallback for guest orders without proper identification
 			
 			if not is_authorized:
 				return Response({
@@ -494,7 +493,6 @@ class OrderCancellationView(APIView):
 				}, status=status.HTTP_403_FORBIDDEN)
 			
 			# Check if order can be cancelled (not already completed or cancelled)
-			from .choices import OrderStatusChoices
 			if order.status.name in [OrderStatusChoices.COMPLETED, OrderStatusChoices.CANCELLED]:
 				return Response({
 					'success': False,
@@ -504,7 +502,6 @@ class OrderCancellationView(APIView):
 				}, status=status.HTTP_400_BAD_REQUEST)
 			
 			# Get or create cancelled status
-			from .models import OrderStatus
 			cancelled_status, _ = OrderStatus.objects.get_or_create(
 				name=OrderStatusChoices.CANCELLED
 			)
@@ -520,15 +517,8 @@ class OrderCancellationView(APIView):
 				'order_id': order.order_id or str(order.id),
 				'previous_status': previous_status,
 				'current_status': OrderStatusChoices.CANCELLED,
-				'cancelled_at': order.created_at.isoformat()  # Using created_at as placeholder
+				'cancelled_at': timezone.now().isoformat()
 			}, status=status.HTTP_200_OK)
-			
-		except Order.DoesNotExist:
-			return Response({
-				'success': False,
-				'message': 'Order not found',
-				'order_id': order_id
-			}, status=status.HTTP_404_NOT_FOUND)
 			
 		except Exception as e:
 			return Response({

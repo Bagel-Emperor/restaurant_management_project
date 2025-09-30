@@ -244,7 +244,7 @@ class ValidateOrderIDFormatTestCase(TestCase):
         valid_ids = [
             ('ORD-A7X9K2M5', 'ORD-', 12),
             ('TEST-ABCD', 'TEST-', 9),
-            ('B8N4P2', '', 6),  # Changed '1' to '2' since '1' is excluded
+            ('B8N4P2', '', 6),
             ('XYZ-ABC23DEF', 'XYZ-', 12)
         ]
         

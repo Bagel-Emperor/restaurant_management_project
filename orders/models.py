@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from .choices import OrderStatusChoices
 from django.conf import settings
@@ -108,12 +109,11 @@ class Order(models.Model):
             >>> total = order.calculate_total()
             >>> print(f"Order total: ${total}")
         """
-        from decimal import Decimal
-        
-        # Use the related_name 'order_items' to get all items for this order
+        # Use select_related() to prevent N+1 queries if menu_item fields are accessed
+        # and only fetch the fields we need for calculation
         total = Decimal('0.00')
         
-        for item in self.order_items.all():
+        for item in self.order_items.select_related('menu_item'):
             item_total = item.price * item.quantity
             total += item_total
         

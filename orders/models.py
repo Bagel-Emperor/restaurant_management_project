@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from .choices import OrderStatusChoices
 from django.conf import settings
@@ -91,6 +92,32 @@ class Order(models.Model):
             self.order_id = generate_order_number(model_class=Order)
         
         super().save(*args, **kwargs)
+    
+    def calculate_total(self):
+        """
+        Calculate the total cost of the order based on associated order items.
+        
+        This method iterates through all OrderItem instances related to this order
+        and calculates the sum of (price * quantity) for each item.
+        
+        Returns:
+            Decimal: The total cost of all items in the order.
+                    Returns 0 if no items are associated with the order.
+        
+        Example:
+            >>> order = Order.objects.get(order_id='ORD-ABC123')
+            >>> total = order.calculate_total()
+            >>> print(f"Order total: ${total}")
+        """
+        # Use select_related() to prevent N+1 queries if menu_item fields are accessed
+        # and only fetch the fields we need for calculation
+        total = Decimal('0.00')
+        
+        for item in self.order_items.select_related('menu_item'):
+            item_total = item.price * item.quantity
+            total += item_total
+        
+        return total
     
     def __str__(self):
         order_display = self.order_id if self.order_id else f"#{self.id}"

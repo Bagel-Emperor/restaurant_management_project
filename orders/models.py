@@ -65,19 +65,36 @@ class Order(models.Model):
     total_amount = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
     created_at = models.DateTimeField(auto_now_add=True)
     
+    # User-friendly unique order ID for display and tracking
+    order_id = models.CharField(
+        max_length=20, 
+        unique=True,   # ✅ Now safe to make unique after populating existing data
+        blank=True,
+        null=True,
+        help_text="Unique alphanumeric order identifier (e.g., ORD-A7X9K2M5)"
+    )
+    
     # Custom model manager
     objects = OrderManager()
 
     def save(self, *args, **kwargs):
+        # Set default status if not provided
         if not self.status_id:
             from .choices import OrderStatusChoices
             OrderStatus = self._meta.get_field('status').related_model
             default_status, _ = OrderStatus.objects.get_or_create(name=OrderStatusChoices.PENDING)
             self.status = default_status
+        
+        # Generate unique order ID if not provided
+        if not self.order_id:
+            from .utils import generate_order_number
+            self.order_id = generate_order_number(model_class=Order)
+        
         super().save(*args, **kwargs)
     
     def __str__(self):
-        return f"Order {self.id} - {self.status.name if self.status else 'No Status'}"
+        order_display = self.order_id if self.order_id else f"#{self.id}"
+        return f"Order {order_display} - {self.status.name if self.status else 'No Status'}"
 
 # OrderItem model to link Order and MenuItem with quantity and price
 class OrderItem(models.Model):

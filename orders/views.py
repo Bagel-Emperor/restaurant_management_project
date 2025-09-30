@@ -61,7 +61,8 @@ class CreateOrderView(APIView):
 		order = order_serializer.save()
 
 		response_data = {
-			'order_id': order.id,
+			'order_id': order.order_id,  # Use user-friendly order ID
+			'database_id': order.id,     # Include database ID for internal use
 			'status': 'success',
 			'customer': CustomerSerializer(customer).data if customer else None,
 		}

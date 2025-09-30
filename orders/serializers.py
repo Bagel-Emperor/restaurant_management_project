@@ -58,8 +58,8 @@ class OrderStatusSerializer(serializers.ModelSerializer):
 class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
-        fields = ['id', 'status', 'total_amount', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        fields = ['id', 'order_id', 'status', 'total_amount', 'created_at']
+        read_only_fields = ['id', 'order_id', 'created_at']
 
 
 class OrderHistorySerializer(serializers.ModelSerializer):
@@ -70,8 +70,8 @@ class OrderHistorySerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Order
-        fields = ['id', 'created_at', 'total_amount', 'status', 'items_count', 'order_items']
-        read_only_fields = ['id', 'created_at', 'total_amount']
+        fields = ['id', 'order_id', 'created_at', 'total_amount', 'status', 'items_count', 'order_items']
+        read_only_fields = ['id', 'order_id', 'created_at', 'total_amount']
     
     def get_items_count(self, obj):
         return obj.order_items.count()
@@ -94,7 +94,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = [
-            'id', 'created_at', 'total_amount', 'status', 
+            'id', 'order_id', 'created_at', 'total_amount', 'status', 
             'customer', 'customer_info', 'items_count', 
             'order_total', 'order_items'
         ]

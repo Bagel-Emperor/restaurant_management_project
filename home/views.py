@@ -840,8 +840,9 @@ class AvailableTablesAPIView(ListAPIView):
             except ValueError:
                 logger.warning(f"Invalid restaurant parameter: {restaurant_id}")
         
-        # Log the query for debugging
-        available_count = queryset.count()
-        logger.info(f"Available tables query returned {available_count} tables")
+        # Log the query count only in debug mode to avoid performance overhead
+        if settings.DEBUG:
+            available_count = queryset.count()
+            logger.info(f"Available tables query returned {available_count} tables")
         
         return queryset.order_by('restaurant__name', 'number')

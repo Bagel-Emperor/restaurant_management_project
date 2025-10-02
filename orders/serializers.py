@@ -572,3 +572,63 @@ class DriverRegistrationSerializer(serializers.ModelSerializer):
                 'created_at': driver.created_at,
             }
         }
+
+
+class CouponValidationSerializer(serializers.Serializer):
+    """
+    Serializer for coupon code validation requests.
+    
+    Provides centralized validation, input normalization, and consistent
+    error formatting for coupon validation API endpoints.
+    """
+    
+    code = serializers.CharField(
+        max_length=20,
+        required=True,
+        allow_blank=False,
+        help_text="The coupon code to validate"
+    )
+    
+    def validate_code(self, value):
+        """
+        Validate and normalize the coupon code.
+        
+        Performs trimming, case normalization, and format validation
+        to ensure consistent coupon code processing.
+        
+        Args:
+            value (str): The raw coupon code from the request
+            
+        Returns:
+            str: The normalized and validated coupon code
+            
+        Raises:
+            serializers.ValidationError: If code format is invalid
+        """
+        if not value:
+            raise serializers.ValidationError("Coupon code cannot be empty")
+        
+        # Trim whitespace and convert to uppercase
+        normalized_code = value.strip().upper()
+        
+        if not normalized_code:
+            raise serializers.ValidationError("Coupon code cannot be empty after trimming")
+        
+        # Validate format (alphanumeric only)
+        import re
+        if not re.match(r'^[A-Z0-9]+$', normalized_code):
+            raise serializers.ValidationError("Coupon code must contain only uppercase letters and numbers")
+        
+        return normalized_code
+    
+    def to_internal_value(self, data):
+        """
+        Override to provide better error handling for missing or invalid data.
+        """
+        if not isinstance(data, dict):
+            raise serializers.ValidationError("Invalid data format. Expected a JSON object.")
+        
+        if 'code' not in data:
+            raise serializers.ValidationError({"code": "This field is required."})
+        
+        return super().to_internal_value(data)

@@ -595,3 +595,182 @@ class Driver(models.Model):
     
     def __str__(self):
         return f"Driver: {self.user.get_full_name() or self.user.username} ({self.full_vehicle_name})"
+
+
+class Coupon(models.Model):
+    """
+    Coupon model for discount promotions and marketing campaigns.
+    
+    Allows restaurant to create promotional codes that customers can use
+    to receive discounts on their orders. Includes validation for code
+    uniqueness, activation status, and validity time periods.
+    """
+    
+    code = models.CharField(
+        max_length=20,
+        unique=True,
+        help_text="Unique coupon code (e.g., SAVE10, WELCOME20)"
+    )
+    
+    discount_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[
+            MinValueValidator(Decimal('0.01'), message="Discount must be at least 0.01%"),
+            MaxValueValidator(Decimal('100.00'), message="Discount cannot exceed 100%")
+        ],
+        help_text="Discount percentage (e.g., 10.00 for 10% off)"
+    )
+    
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether the coupon is currently active and can be used"
+    )
+    
+    valid_from = models.DateField(
+        help_text="Date from when the coupon becomes valid"
+    )
+    
+    valid_until = models.DateField(
+        help_text="Date until when the coupon remains valid (inclusive)"
+    )
+    
+    # Optional additional fields for better coupon management
+    description = models.TextField(
+        blank=True,
+        help_text="Optional description of the coupon offer"
+    )
+    
+    usage_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of times this coupon has been used"
+    )
+    
+    max_usage = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Maximum number of times this coupon can be used (null for unlimited)"
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Coupon'
+        verbose_name_plural = 'Coupons'
+    
+    def clean(self):
+        """Custom validation for Coupon model."""
+        super().clean()
+        
+        # Ensure valid_from is not after valid_until
+        if self.valid_from and self.valid_until and self.valid_from > self.valid_until:
+            raise ValidationError({
+                'valid_until': 'Valid until date must be after or equal to valid from date.'
+            })
+        
+        # Ensure code is alphanumeric and uppercase
+        if self.code:
+            if not re.match(r'^[A-Z0-9]+$', self.code):
+                raise ValidationError({
+                    'code': 'Coupon code must contain only uppercase letters and numbers.'
+                })
+    
+    def save(self, *args, **kwargs):
+        """Override save to ensure validation and uppercase code."""
+        # Convert code to uppercase
+        if self.code:
+            self.code = self.code.upper()
+        
+        # Run validation
+        self.full_clean()
+        
+        super().save(*args, **kwargs)
+    
+    def is_valid_on_date(self, check_date=None):
+        """
+        Check if coupon is valid on a specific date.
+        
+        Args:
+            check_date (date): Date to check validity for (defaults to today)
+            
+        Returns:
+            bool: True if coupon is valid on the specified date
+        """
+        if check_date is None:
+            check_date = timezone.now().date()
+        
+        return (
+            self.is_active and 
+            self.valid_from <= check_date <= self.valid_until
+        )
+    
+    def is_usage_available(self):
+        """
+        Check if coupon has remaining usage available.
+        
+        Returns:
+            bool: True if coupon can still be used
+        """
+        if self.max_usage is None:
+            return True  # Unlimited usage
+        
+        return self.usage_count < self.max_usage
+    
+    def can_be_used(self, check_date=None):
+        """
+        Check if coupon can currently be used.
+        
+        Combines date validity and usage availability checks.
+        
+        Args:
+            check_date (date): Date to check validity for (defaults to today)
+            
+        Returns:
+            bool: True if coupon can be used
+        """
+        return self.is_valid_on_date(check_date) and self.is_usage_available()
+    
+    def increment_usage(self):
+        """
+        Increment the usage count for this coupon atomically.
+        
+        Uses database-level atomic operations to prevent race conditions
+        and enforce usage limits even under concurrent requests.
+        
+        Should be called when a coupon is successfully applied to an order.
+        
+        Returns:
+            bool: True if usage was successfully incremented, False if usage limit exceeded
+        
+        Raises:
+            ValueError: If the coupon has reached its maximum usage limit
+        """
+        from django.db import transaction
+        from django.db.models import F
+        
+        with transaction.atomic():
+            # Select the coupon with row-level locking to prevent races
+            coupon = Coupon.objects.select_for_update().get(pk=self.pk)
+            
+            # Check usage limits at the database level
+            if coupon.max_usage is not None and coupon.usage_count >= coupon.max_usage:
+                raise ValueError(f"Coupon {coupon.code} has reached its maximum usage limit of {coupon.max_usage}")
+            
+            # Use atomic F expression to increment usage count
+            updated_count = Coupon.objects.filter(pk=self.pk).update(
+                usage_count=F('usage_count') + 1
+            )
+            
+            if updated_count == 1:
+                # Refresh the instance to get the updated usage_count
+                self.refresh_from_db(fields=['usage_count'])
+                return True
+            
+        return False
+    
+    def __str__(self):
+        status = "Active" if self.is_active else "Inactive"
+        return f"{self.code} ({self.discount_percentage}% off) - {status}"

@@ -17,36 +17,83 @@ from django.db.models import Sum
 
 from orders.models import Order
 
-# If you have a Coupon model, import it instead and check uniqueness there.
-# from .models import Coupon
-
 def generate_coupon_code(length=10, existing_codes=None):
     """
     Generate a unique alphanumeric coupon code.
-    Checks uniqueness against a set of existing codes (or a database model if available).
+    
+    Automatically checks uniqueness against the Coupon model database to ensure
+    no duplicate codes are created. Integrates seamlessly with the coupon system.
+    
     Args:
         length (int): Length of the coupon code. Must be positive. Default is 10.
-        existing_codes (set or None): Set of codes to check uniqueness against. If None, checks against Order.coupon_code if present.
+        existing_codes (set or None): Optional set of additional codes to avoid.
+                                    If None, only checks against database.
+    
     Returns:
-        str: Unique coupon code.
+        str: Unique coupon code in uppercase letters and numbers.
+    
     Raises:
         ValueError: If length is not a positive integer.
-    Note:
-        For production, integrate with a Coupon model and check against Coupon.objects.values_list('code', flat=True) to ensure no duplicates in the database.
+        RuntimeError: If unable to generate unique code after maximum attempts.
+    
+    Example:
+        >>> generate_coupon_code(8)
+        'A7X9K2M5'
+        
+        >>> generate_coupon_code(6, {'AVOID1', 'AVOID2'})
+        'B8N4P2'
+    
+    Integration:
+        - Automatically imports and checks against Coupon model
+        - Ensures no duplicate codes in database
+        - Safe for concurrent use with proper database constraints
+        - Used by admin interface and promotional campaign tools
     """
     if not isinstance(length, int) or length < 1:
         raise ValueError("Coupon code length must be a positive integer.")
+    
+    # Import Coupon model for database uniqueness checking
+    try:
+        from .models import Coupon
+        coupon_model_available = True
+    except ImportError:
+        # Fallback if Coupon model is not available
+        coupon_model_available = False
+        logger = logging.getLogger(__name__)
+        logger.warning("Coupon model not available for uniqueness checking")
+    
     alphabet = string.ascii_uppercase + string.digits
+    
+    # Use existing_codes only as an optional 'avoid list' provided by caller
     if existing_codes is None:
-        # Example: If you have a Coupon model, use Coupon.objects.values_list('code', flat=True)
-        # For now, fallback to an empty set (no uniqueness check)
         existing_codes = set()
+    
     max_attempts = min(10000, len(alphabet) ** length)
-    for _ in range(max_attempts):
+    
+    for attempt in range(max_attempts):
+        # Generate random code
         code = ''.join(secrets.choice(alphabet) for _ in range(length))
-        if code not in existing_codes:
-            return code
-    raise RuntimeError("Unable to generate a unique coupon code after {} attempts. Consider increasing the code length or clearing used codes.".format(max_attempts))
+        
+        # Check against provided existing codes (avoid list)
+        if code in existing_codes:
+            continue
+        
+        # Rely on indexed database exists() check for efficiency
+        if coupon_model_available:
+            try:
+                if Coupon.objects.filter(code=code).exists():
+                    continue  # Code already exists, try again
+            except Exception as e:
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Database check failed for coupon code '{code}': {e}")
+                continue
+        
+        return code
+    
+    raise RuntimeError(
+        f"Unable to generate a unique coupon code after {max_attempts} attempts. "
+        f"Consider increasing the code length or clearing used codes."
+    )
 
 
 def generate_unique_order_id(length: int = 8, prefix: str = '', model_class=None, field_name: str = 'order_id') -> str:

@@ -526,3 +526,134 @@ class OrderCancellationView(APIView):
 				'message': 'An unexpected error occurred while cancelling the order',
 				'error': str(e)
 			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class CouponValidationView(APIView):
+	"""
+	API endpoint for validating coupon codes.
+	
+	Accepts POST requests with a coupon code and validates it against
+	database constraints including existence, active status, date validity,
+	and usage limits.
+	"""
+	permission_classes = [permissions.AllowAny]  # Allow both authenticated and guest users
+	
+	def post(self, request, *args, **kwargs):
+		"""
+		Validate a coupon code.
+		
+		Expected request data:
+		{
+			"code": "COUPON_CODE"
+		}
+		
+		Returns:
+		- 200: Coupon is valid with discount information
+		- 400: Invalid request data or coupon validation failed
+		- 404: Coupon code not found
+		- 500: Server error
+		"""
+		try:
+			# Extract coupon code from request
+			coupon_code = request.data.get('code')
+			
+			if not coupon_code:
+				return Response({
+					'success': False,
+					'message': 'Coupon code is required',
+					'error_code': 'MISSING_CODE'
+				}, status=status.HTTP_400_BAD_REQUEST)
+			
+			# Clean and validate code format
+			coupon_code = coupon_code.strip().upper()
+			
+			if not coupon_code:
+				return Response({
+					'success': False,
+					'message': 'Coupon code cannot be empty',
+					'error_code': 'EMPTY_CODE'
+				}, status=status.HTTP_400_BAD_REQUEST)
+			
+			# Import Coupon model here to avoid circular imports
+			from .models import Coupon
+			
+			# Try to find the coupon
+			try:
+				coupon = Coupon.objects.get(code=coupon_code)
+			except Coupon.DoesNotExist:
+				return Response({
+					'success': False,
+					'message': 'Invalid coupon code',
+					'error_code': 'COUPON_NOT_FOUND',
+					'code': coupon_code
+				}, status=status.HTTP_404_NOT_FOUND)
+			
+			# Check if coupon is active
+			if not coupon.is_active:
+				return Response({
+					'success': False,
+					'message': 'This coupon is no longer active',
+					'error_code': 'COUPON_INACTIVE',
+					'code': coupon_code
+				}, status=status.HTTP_400_BAD_REQUEST)
+			
+			# Check date validity
+			current_date = timezone.now().date()
+			
+			if current_date < coupon.valid_from:
+				return Response({
+					'success': False,
+					'message': f'This coupon is not valid until {coupon.valid_from.strftime("%Y-%m-%d")}',
+					'error_code': 'COUPON_NOT_YET_VALID',
+					'code': coupon_code,
+					'valid_from': coupon.valid_from.isoformat()
+				}, status=status.HTTP_400_BAD_REQUEST)
+			
+			if current_date > coupon.valid_until:
+				return Response({
+					'success': False,
+					'message': f'This coupon expired on {coupon.valid_until.strftime("%Y-%m-%d")}',
+					'error_code': 'COUPON_EXPIRED',
+					'code': coupon_code,
+					'valid_until': coupon.valid_until.isoformat()
+				}, status=status.HTTP_400_BAD_REQUEST)
+			
+			# Check usage limits
+			if not coupon.is_usage_available():
+				return Response({
+					'success': False,
+					'message': 'This coupon has reached its usage limit',
+					'error_code': 'COUPON_USAGE_EXCEEDED',
+					'code': coupon_code,
+					'max_usage': coupon.max_usage,
+					'current_usage': coupon.usage_count
+				}, status=status.HTTP_400_BAD_REQUEST)
+			
+			# Coupon is valid - return success response with discount information
+			response_data = {
+				'success': True,
+				'message': 'Coupon is valid and can be applied',
+				'coupon': {
+					'code': coupon.code,
+					'discount_percentage': float(coupon.discount_percentage),
+					'description': coupon.description,
+					'valid_from': coupon.valid_from.isoformat(),
+					'valid_until': coupon.valid_until.isoformat(),
+					'usage_count': coupon.usage_count,
+					'max_usage': coupon.max_usage
+				}
+			}
+			
+			return Response(response_data, status=status.HTTP_200_OK)
+			
+		except Exception as e:
+			# Log the error for debugging
+			import logging
+			logger = logging.getLogger(__name__)
+			logger.error(f"Error validating coupon '{coupon_code}': {str(e)}", exc_info=True)
+			
+			return Response({
+				'success': False,
+				'message': 'An unexpected error occurred while validating the coupon',
+				'error_code': 'INTERNAL_ERROR'
+			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

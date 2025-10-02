@@ -9,7 +9,8 @@ from .views import (
     UserProfileViewSet,
     RiderRegistrationView,
     DriverRegistrationView,
-    OrderCancellationView
+    OrderCancellationView,
+    CouponValidationView
 )
 from .jwt_views import (
     CustomTokenObtainPairView,
@@ -30,6 +31,9 @@ urlpatterns = [
     path('orders/<str:order_id>/cancel/', OrderCancellationView.as_view(), name='order-cancel'),
     path('orders/<int:order_id>/', OrderDetailView.as_view(), name='order-detail'),
     path('customers/', CustomerListCreateAPIView.as_view(), name='customer-list-create'),
+    
+    # Coupon validation endpoint
+    path('coupons/validate/', CouponValidationView.as_view(), name='coupon-validate'),
     
     # Registration endpoints
     path('register/rider/', RiderRegistrationView.as_view(), name='rider-registration'),

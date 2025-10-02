@@ -8,15 +8,22 @@ restaurant management utilities.
 
 import logging
 from datetime import datetime, time
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 import re
 
 from django.conf import settings
 
+# Import models at module level to avoid repeated import overhead
+try:
+    from .models import Restaurant
+except ImportError:
+    # Handle case where models aren't available (e.g., during migrations)
+    Restaurant = None
+
 logger = logging.getLogger(__name__)
 
 
-def parse_time_range(time_str: str) -> tuple[Optional[time], Optional[time]]:
+def parse_time_range(time_str: str) -> Tuple[Optional[time], Optional[time]]:
     """
     Parse a time range string into start and end time objects.
     
@@ -121,18 +128,18 @@ def get_restaurant_hours() -> Dict[str, str]:
     """
     try:
         # Try to get hours from database (Restaurant model)
-        from .models import Restaurant
-        restaurant = Restaurant.objects.first()
-        
-        if restaurant and restaurant.opening_hours:
-            # Ensure all days are present
-            days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-            hours = {}
+        if Restaurant is not None:
+            restaurant = Restaurant.objects.first()
             
-            for day in days:
-                hours[day] = restaurant.opening_hours.get(day, 'Closed')
-            
-            return hours
+            if restaurant and restaurant.opening_hours:
+                # Ensure all days are present
+                days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+                hours = {}
+                
+                for day in days:
+                    hours[day] = restaurant.opening_hours.get(day, 'Closed')
+                
+                return hours
             
     except Exception as e:
         logger.warning(f"Could not retrieve restaurant hours from database: {e}")
@@ -319,7 +326,11 @@ def get_restaurant_status(check_time: Optional[datetime] = None) -> Dict[str, An
         if is_open:
             start_time, end_time = parse_time_range(today_hours)
             if end_time:
-                status['status_message'] = f"Open until {end_time.strftime('%I:%M %p').lstrip('0')}"
+                # Format time and remove leading zero from hour only (not from minutes)
+                formatted_time = end_time.strftime('%I:%M %p')
+                if formatted_time.startswith('0'):
+                    formatted_time = formatted_time[1:]
+                status['status_message'] = f"Open until {formatted_time}"
             else:
                 status['status_message'] = "Currently open"
         else:

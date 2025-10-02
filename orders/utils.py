@@ -5,6 +5,7 @@ This module contains reusable utility functions for order management,
 including unique ID generation, coupon code generation, sales calculations, and order-related helpers.
 """
 
+import logging
 import secrets
 import string
 from datetime import date
@@ -201,7 +202,7 @@ DEFAULT_ORDER_PREFIX = 'ORD-'
 DEFAULT_SHORT_ID_LENGTH = 6
 
 
-def get_daily_sales_total(target_date: date):
+def get_daily_sales_total(target_date: date) -> Decimal:
     """
     Calculate the total sales revenue for a specific date.
     
@@ -274,7 +275,7 @@ def get_daily_sales_total(target_date: date):
         return daily_total
         
     except Exception as e:
-        # Log the error in production, but for now return 0 as a safe fallback
-        # In production, you might want to log this error or handle it differently
-        print(f"Error calculating daily sales total for {target_date}: {e}")
+        # Log the error using Python's logging module for proper production error handling
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error calculating daily sales total for {target_date}: {e}", exc_info=True)
         return Decimal('0.00')

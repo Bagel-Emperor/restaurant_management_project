@@ -2,13 +2,18 @@
 Utility functions for the orders application.
 
 This module contains reusable utility functions for order management,
-including unique ID generation, coupon code generation, and order-related helpers.
+including unique ID generation, coupon code generation, sales calculations, and order-related helpers.
 """
 
+import logging
 import secrets
 import string
+from datetime import date
+from decimal import Decimal
 from typing import Optional
+
 from django.db import transaction
+from django.db.models import Sum
 
 from orders.models import Order
 
@@ -195,3 +200,82 @@ def validate_order_id_format(order_id: str, expected_prefix: str = '', expected_
 DEFAULT_ORDER_ID_LENGTH = 8
 DEFAULT_ORDER_PREFIX = 'ORD-'
 DEFAULT_SHORT_ID_LENGTH = 6
+
+
+def get_daily_sales_total(target_date: date) -> Decimal:
+    """
+    Calculate the total sales revenue for a specific date.
+    
+    This function sums up the total_amount of all orders placed on the specified date,
+    providing a daily revenue calculation that's useful for restaurant management,
+    reporting, and analytics.
+    
+    Args:
+        target_date (datetime.date): The specific date to calculate sales for.
+                                   Can be a date object from Python's datetime module.
+    
+    Returns:
+        Decimal: The total sales amount for the specified date.
+                Returns Decimal('0.00') if no orders were placed on that date.
+    
+    Example:
+        >>> from datetime import date
+        >>> from orders.utils import get_daily_sales_total
+        >>> 
+        >>> # Get sales for today
+        >>> today_sales = get_daily_sales_total(date.today())
+        >>> print(f"Today's sales: ${today_sales}")
+        Today's sales: $1,234.56
+        
+        >>> # Get sales for a specific date
+        >>> from datetime import date
+        >>> specific_date = date(2025, 10, 1)
+        >>> sales = get_daily_sales_total(specific_date)
+        >>> print(f"Sales for {specific_date}: ${sales}")
+        Sales for 2025-10-01: $856.42
+        
+        >>> # Get sales for a day with no orders
+        >>> no_orders_date = date(2025, 1, 1)  # Assuming no orders on this date
+        >>> sales = get_daily_sales_total(no_orders_date)
+        >>> print(f"Sales: ${sales}")
+        Sales: $0.00
+    
+    Note:
+        - Uses Django's __date lookup to filter DateTimeField by date portion
+        - Only includes orders with valid total_amount values (excludes null values)
+        - Returns Decimal for precise financial calculations
+        - Integrates with existing Order model and shopping cart system
+        - Considers orders from both authenticated users and guest customers
+    
+    Integration:
+        This function works seamlessly with the existing order system:
+        - Orders created through the shopping cart system
+        - Manual orders created by restaurant staff
+        - All order statuses (pending, completed, cancelled) are included
+        - Works with the Order.calculate_total() method for verification
+    
+    Performance:
+        - Uses efficient database aggregation (Sum) for optimal performance
+        - Single database query regardless of number of orders
+        - Indexes on created_at field recommended for large datasets
+    """
+    try:
+        # Query all orders for the specified date and sum their total_amount
+        # Use __date lookup to filter DateTimeField by date portion only
+        result = Order.objects.filter(
+            created_at__date=target_date
+        ).aggregate(
+            total_sum=Sum('total_amount')
+        )
+        
+        # Extract the sum from the result dictionary
+        # If no orders found, Sum returns None, so we default to 0
+        daily_total = result['total_sum'] or Decimal('0.00')
+        
+        return daily_total
+        
+    except Exception as e:
+        # Log the error using Python's logging module for proper production error handling
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error calculating daily sales total for {target_date}: {e}", exc_info=True)
+        return Decimal('0.00')

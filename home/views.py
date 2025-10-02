@@ -771,3 +771,78 @@ class TableDetailAPIView(RetrieveAPIView):
         except Table.DoesNotExist:
             logger.warning(f"Table with ID {self.kwargs['pk']} not found")
             raise
+
+
+class AvailableTablesAPIView(ListAPIView):
+    """
+    API view for retrieving only available tables.
+    
+    This endpoint provides a filtered list of tables that are currently available
+    for reservation or seating. A table is considered available when:
+    - status is 'available' 
+    - is_active is True
+    
+    This is essential for reservation systems and real-time table management.
+    
+    Provides information including:
+    - Table number and capacity
+    - Location within restaurant  
+    - Restaurant details
+    - Availability status confirmation
+    
+    Supports additional filtering:
+    - capacity: Minimum capacity required (e.g., ?capacity=4)
+    - location: Filter by location type (e.g., ?location=outdoor)
+    - restaurant: Filter by specific restaurant ID (e.g., ?restaurant=1)
+    
+    Example usage:
+    - GET /api/tables/available/ - List all available tables
+    - GET /api/tables/available/?capacity=4 - Available tables for 4+ people
+    - GET /api/tables/available/?location=outdoor - Available outdoor tables
+    - GET /api/tables/available/?restaurant=1&capacity=2 - Available tables for 2+ at restaurant 1
+    
+    Returns paginated results with table details in JSON format.
+    """
+    serializer_class = TableSerializer
+    
+    def get_queryset(self):
+        """
+        Return only tables that are currently available.
+        Also supports additional filtering by capacity, location, and restaurant.
+        """
+        # Base queryset: only available tables
+        queryset = Table.objects.filter(
+            status='available',
+            is_active=True
+        ).select_related('restaurant')
+        
+        # Additional filtering options
+        capacity = self.request.query_params.get('capacity')
+        if capacity:
+            try:
+                capacity = int(capacity)
+                queryset = queryset.filter(capacity__gte=capacity)
+                logger.info(f"Filtering available tables by capacity >= {capacity}")
+            except ValueError:
+                logger.warning(f"Invalid capacity parameter: {capacity}")
+        
+        location = self.request.query_params.get('location')
+        if location:
+            queryset = queryset.filter(location=location)
+            logger.info(f"Filtering available tables by location: {location}")
+        
+        restaurant_id = self.request.query_params.get('restaurant')
+        if restaurant_id:
+            try:
+                restaurant_id = int(restaurant_id)
+                queryset = queryset.filter(restaurant_id=restaurant_id)
+                logger.info(f"Filtering available tables by restaurant ID: {restaurant_id}")
+            except ValueError:
+                logger.warning(f"Invalid restaurant parameter: {restaurant_id}")
+        
+        # Log the query count only in debug mode to avoid performance overhead
+        if settings.DEBUG:
+            available_count = queryset.count()
+            logger.info(f"Available tables query returned {available_count} tables")
+        
+        return queryset.order_by('restaurant__name', 'number')

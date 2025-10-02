@@ -201,7 +201,7 @@ DEFAULT_ORDER_PREFIX = 'ORD-'
 DEFAULT_SHORT_ID_LENGTH = 6
 
 
-def get_daily_sales_total(target_date):
+def get_daily_sales_total(target_date: date):
     """
     Calculate the total sales revenue for a specific date.
     

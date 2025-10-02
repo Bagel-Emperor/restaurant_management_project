@@ -735,12 +735,41 @@ class Coupon(models.Model):
     
     def increment_usage(self):
         """
-        Increment the usage count for this coupon.
+        Increment the usage count for this coupon atomically.
+        
+        Uses database-level atomic operations to prevent race conditions
+        and enforce usage limits even under concurrent requests.
         
         Should be called when a coupon is successfully applied to an order.
+        
+        Returns:
+            bool: True if usage was successfully incremented, False if usage limit exceeded
+        
+        Raises:
+            ValueError: If the coupon has reached its maximum usage limit
         """
-        self.usage_count += 1
-        self.save(update_fields=['usage_count'])
+        from django.db import transaction
+        from django.db.models import F
+        
+        with transaction.atomic():
+            # Select the coupon with row-level locking to prevent races
+            coupon = Coupon.objects.select_for_update().get(pk=self.pk)
+            
+            # Check usage limits at the database level
+            if coupon.max_usage is not None and coupon.usage_count >= coupon.max_usage:
+                raise ValueError(f"Coupon {coupon.code} has reached its maximum usage limit of {coupon.max_usage}")
+            
+            # Use atomic F expression to increment usage count
+            updated_count = Coupon.objects.filter(pk=self.pk).update(
+                usage_count=F('usage_count') + 1
+            )
+            
+            if updated_count == 1:
+                # Refresh the instance to get the updated usage_count
+                self.refresh_from_db(fields=['usage_count'])
+                return True
+            
+        return False
     
     def __str__(self):
         status = "Active" if self.is_active else "Inactive"

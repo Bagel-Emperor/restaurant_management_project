@@ -64,10 +64,8 @@ def generate_coupon_code(length=10, existing_codes=None):
     
     alphabet = string.ascii_uppercase + string.digits
     
-    # Get existing codes from database if Coupon model is available
-    if coupon_model_available and existing_codes is None:
-        existing_codes = set(Coupon.objects.values_list('code', flat=True))
-    elif existing_codes is None:
+    # Use existing_codes only as an optional 'avoid list' provided by caller
+    if existing_codes is None:
         existing_codes = set()
     
     max_attempts = min(10000, len(alphabet) ** length)
@@ -76,11 +74,11 @@ def generate_coupon_code(length=10, existing_codes=None):
         # Generate random code
         code = ''.join(secrets.choice(alphabet) for _ in range(length))
         
-        # Check against provided existing codes
+        # Check against provided existing codes (avoid list)
         if code in existing_codes:
             continue
         
-        # Double-check against database if Coupon model is available
+        # Rely on indexed database exists() check for efficiency
         if coupon_model_available:
             try:
                 if Coupon.objects.filter(code=code).exists():
@@ -94,7 +92,7 @@ def generate_coupon_code(length=10, existing_codes=None):
     
     raise RuntimeError(
         f"Unable to generate a unique coupon code after {max_attempts} attempts. "
-        f"Consider increasing the code length or clearing unused codes."
+        f"Consider increasing the code length or clearing used codes."
     )
 
 

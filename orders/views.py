@@ -553,26 +553,25 @@ class CouponValidationView(APIView):
 		- 404: Coupon code not found
 		- 500: Server error
 		"""
+		# Initialize coupon_code to prevent UnboundLocalError in exception handling
+		coupon_code = None
+		
 		try:
-			# Extract coupon code from request
-			coupon_code = request.data.get('code')
+			# Use DRF Serializer for centralized validation and normalization
+			from .serializers import CouponValidationSerializer
+			serializer = CouponValidationSerializer(data=request.data)
 			
-			if not coupon_code:
+			if not serializer.is_valid():
+				# Return DRF's standardized error format
 				return Response({
 					'success': False,
-					'message': 'Coupon code is required',
-					'error_code': 'MISSING_CODE'
+					'message': 'Invalid coupon code format',
+					'error_code': 'VALIDATION_ERROR',
+					'errors': serializer.errors
 				}, status=status.HTTP_400_BAD_REQUEST)
 			
-			# Clean and validate code format
-			coupon_code = coupon_code.strip().upper()
-			
-			if not coupon_code:
-				return Response({
-					'success': False,
-					'message': 'Coupon code cannot be empty',
-					'error_code': 'EMPTY_CODE'
-				}, status=status.HTTP_400_BAD_REQUEST)
+			# Get the validated and normalized coupon code
+			coupon_code = serializer.validated_data['code']
 			
 			# Import Coupon model here to avoid circular imports
 			from .models import Coupon
@@ -650,7 +649,8 @@ class CouponValidationView(APIView):
 			# Log the error for debugging
 			import logging
 			logger = logging.getLogger(__name__)
-			logger.error(f"Error validating coupon '{coupon_code}': {str(e)}", exc_info=True)
+			# Use safe logging to handle cases where coupon_code might be undefined
+			logger.error(f"Error validating coupon '{coupon_code or 'undefined'}': {str(e)}", exc_info=True)
 			
 			return Response({
 				'success': False,

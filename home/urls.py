@@ -8,7 +8,9 @@ from .views import (
     # Cart API views
     cart_summary, add_to_cart_api, remove_from_cart_api, update_cart_item_api, clear_cart_api,
     # Contact form API view
-    ContactSubmissionCreateAPIView
+    ContactSubmissionCreateAPIView,
+    # Table API views
+    TableListAPIView, TableDetailAPIView
 )
 
 # Create router for ViewSets
@@ -59,6 +61,10 @@ urlpatterns = [
     path('api/cart/remove/<int:menu_item_id>/', remove_from_cart_api, name='remove-from-cart'),
     path('api/cart/update/<int:menu_item_id>/', update_cart_item_api, name='update-cart-item'),
     path('api/cart/clear/', clear_cart_api, name='clear-cart'),
+    
+    # Table Management API endpoints
+    path('api/tables/', TableListAPIView.as_view(), name='table-list'),
+    path('api/tables/<int:pk>/', TableDetailAPIView.as_view(), name='table-detail'),
     
     # Contact Form API endpoint
     path('api/contact/', ContactSubmissionCreateAPIView.as_view(), name='contact-api'),

@@ -11,8 +11,8 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 import logging
 from .forms import FeedbackForm, ContactSubmissionForm
-from .models import Restaurant, MenuItem, MenuCategory, Cart, CartItem, ContactSubmission
-from .serializers import RestaurantSerializer, MenuItemSerializer, MenuCategorySerializer, ContactSubmissionSerializer
+from .models import Restaurant, MenuItem, MenuCategory, Cart, CartItem, ContactSubmission, Table
+from .serializers import RestaurantSerializer, MenuItemSerializer, MenuCategorySerializer, ContactSubmissionSerializer, TableSerializer
 
 # Email configuration constants
 DEFAULT_RESTAURANT_EMAIL = 'contact@perpexbistro.com'
@@ -21,7 +21,7 @@ from .cart_utils import (
     get_or_create_cart, add_to_cart, remove_from_cart, 
     update_cart_item_quantity, clear_cart, get_cart_summary
 )
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -669,3 +669,105 @@ class ContactSubmissionCreateAPIView(CreateAPIView):
             })
         
         return response
+
+
+# ================================
+# TABLE MANAGEMENT API VIEWS
+# ================================
+
+class TableListAPIView(ListAPIView):
+    """
+    API view for listing all tables.
+    
+    Provides a list of all restaurant tables with their details including:
+    - Table number and capacity
+    - Current status and availability
+    - Location within restaurant
+    - Restaurant information
+    
+    Supports filtering by:
+    - status: Filter by table status (available, occupied, reserved, maintenance)
+    - capacity: Filter by minimum capacity
+    - location: Filter by table location (indoor, outdoor, patio, etc.)
+    - restaurant: Filter by restaurant ID
+    
+    Example usage:
+    - GET /api/tables/ - List all tables
+    - GET /api/tables/?status=available - List available tables only
+    - GET /api/tables/?capacity=4 - List tables with 4+ capacity
+    """
+    queryset = Table.objects.all().select_related('restaurant')
+    serializer_class = TableSerializer
+    
+    def get_queryset(self):
+        """
+        Filter queryset based on query parameters.
+        """
+        queryset = super().get_queryset()
+        
+        # Filter by status
+        status = self.request.query_params.get('status')
+        if status:
+            queryset = queryset.filter(status=status)
+        
+        # Filter by minimum capacity
+        capacity = self.request.query_params.get('capacity')
+        if capacity:
+            try:
+                capacity = int(capacity)
+                queryset = queryset.filter(capacity__gte=capacity)
+            except ValueError:
+                pass  # Ignore invalid capacity values
+        
+        # Filter by location
+        location = self.request.query_params.get('location')
+        if location:
+            queryset = queryset.filter(location=location)
+        
+        # Filter by restaurant
+        restaurant_id = self.request.query_params.get('restaurant')
+        if restaurant_id:
+            try:
+                restaurant_id = int(restaurant_id)
+                queryset = queryset.filter(restaurant_id=restaurant_id)
+            except ValueError:
+                pass  # Ignore invalid restaurant IDs
+        
+        # Filter by active status
+        if self.request.query_params.get('active_only', '').lower() == 'true':
+            queryset = queryset.filter(is_active=True)
+        
+        return queryset.order_by('number')
+
+
+class TableDetailAPIView(RetrieveAPIView):
+    """
+    API view for retrieving a single table's details.
+    
+    Provides detailed information about a specific table including:
+    - Complete table information (number, capacity, location)
+    - Current status and availability
+    - Restaurant details
+    - Creation and update timestamps
+    
+    The table is identified by its primary key (ID) in the URL.
+    
+    Example usage:
+    - GET /api/tables/1/ - Get details for table with ID 1
+    
+    Returns 404 if table doesn't exist.
+    """
+    queryset = Table.objects.all().select_related('restaurant')
+    serializer_class = TableSerializer
+    
+    def get_object(self):
+        """
+        Override to add custom error handling and logging.
+        """
+        try:
+            obj = super().get_object()
+            logger.info(f"Table {obj.number} details accessed")
+            return obj
+        except Table.DoesNotExist:
+            logger.warning(f"Table with ID {self.kwargs['pk']} not found")
+            raise

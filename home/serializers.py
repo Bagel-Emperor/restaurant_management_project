@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
-from .models import Restaurant, MenuItem, MenuCategory, ContactSubmission
+from .models import Restaurant, MenuItem, MenuCategory, ContactSubmission, Table
 
 # Serializer for MenuCategory
 class MenuCategorySerializer(serializers.ModelSerializer):
@@ -138,3 +138,56 @@ class ContactSubmissionSerializer(serializers.ModelSerializer):
         Create and return a new ContactSubmission instance.
         """
         return ContactSubmission.objects.create(**validated_data)
+
+
+class TableSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Table model.
+    Provides table information including number, capacity, location, and status.
+    Includes computed fields for availability and human-readable status.
+    """
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    location_display = serializers.CharField(source='get_location_display', read_only=True)
+    is_available = serializers.BooleanField(read_only=True)
+    restaurant_name = serializers.CharField(source='restaurant.name', read_only=True)
+    
+    class Meta:
+        model = Table
+        fields = [
+            'id',
+            'number',
+            'capacity',
+            'location',
+            'location_display',
+            'status',
+            'status_display',
+            'is_active',
+            'is_available',
+            'description',
+            'restaurant',
+            'restaurant_name',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['created_at', 'updated_at', 'is_available']
+    
+    def validate_number(self, value):
+        """Validate table number is positive."""
+        if value < 1:
+            raise serializers.ValidationError("Table number must be positive.")
+        return value
+    
+    def validate_capacity(self, value):
+        """Validate table capacity is reasonable."""
+        if value < 1:
+            raise serializers.ValidationError("Table capacity must be at least 1.")
+        if value > 20:
+            raise serializers.ValidationError("Table capacity cannot exceed 20 seats.")
+        return value
+    
+    def validate(self, data):
+        """Custom validation for table data."""
+        # Note: Table number uniqueness per restaurant is handled by the model's 
+        # unique_together constraint, which provides proper database-level validation
+        # and better error handling than duplicate serializer validation
+        return data

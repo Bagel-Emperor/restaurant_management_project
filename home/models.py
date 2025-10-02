@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator
+from django.core.exceptions import ValidationError
 from decimal import Decimal
 
 # Constants
@@ -138,3 +139,75 @@ class CartItem(models.Model):
 		from django.core.exceptions import ValidationError
 		if not self.menu_item.is_available:
 			raise ValidationError(f"Menu item '{self.menu_item.name}' is not available.")
+
+
+class Table(models.Model):
+	"""
+	Represents a table in the restaurant for seating management.
+	Includes table capacity, location, and availability status.
+	"""
+	AVAILABILITY_CHOICES = [
+		('available', 'Available'),
+		('occupied', 'Occupied'),
+		('reserved', 'Reserved'),
+		('maintenance', 'Under Maintenance'),
+	]
+	
+	LOCATION_CHOICES = [
+		('indoor', 'Indoor'),
+		('outdoor', 'Outdoor'),
+		('patio', 'Patio'),
+		('bar', 'Bar Area'),
+		('private', 'Private Dining'),
+	]
+	
+	# Basic table information
+	number = models.PositiveIntegerField(help_text="Table number (unique per restaurant)")
+	capacity = models.PositiveIntegerField(validators=[MinValueValidator(1)], help_text="Maximum number of seats")
+	location = models.CharField(max_length=20, choices=LOCATION_CHOICES, default='indoor')
+	
+	# Status and availability
+	status = models.CharField(max_length=15, choices=AVAILABILITY_CHOICES, default='available')
+	is_active = models.BooleanField(default=True, help_text="Whether the table is in service")
+	
+	# Additional details
+	description = models.TextField(blank=True, help_text="Optional description or special features")
+	restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='tables')
+	
+	# Timestamps
+	created_at = models.DateTimeField(auto_now_add=True)
+	updated_at = models.DateTimeField(auto_now=True)
+	
+	class Meta:
+		ordering = ['number']
+		verbose_name = 'Table'
+		verbose_name_plural = 'Tables'
+		# Ensure table numbers are unique per restaurant, not globally
+		unique_together = [['restaurant', 'number']]
+		indexes = [
+			models.Index(fields=['number']),
+			models.Index(fields=['status']),
+			models.Index(fields=['capacity']),
+			models.Index(fields=['location']),
+			models.Index(fields=['restaurant', 'number']),  # Index for unique constraint
+		]
+	
+	def __str__(self):
+		return f"Table {self.number} ({self.capacity} seats) - {self.get_status_display()}"
+	
+	@property
+	def is_available(self):
+		"""Check if table is available for seating."""
+		return self.status == 'available' and self.is_active
+	
+	@property
+	def status_display(self):
+		"""Get human-readable status."""
+		return self.get_status_display()
+	
+	def clean(self):
+		"""Custom validation for table."""
+		if self.capacity < 1:
+			raise ValidationError("Table capacity must be at least 1")
+		if self.number < 1:
+			raise ValidationError("Table number must be positive")

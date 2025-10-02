@@ -162,7 +162,7 @@ class Table(models.Model):
 	]
 	
 	# Basic table information
-	number = models.PositiveIntegerField(unique=True, help_text="Unique table number")
+	number = models.PositiveIntegerField(help_text="Table number (unique per restaurant)")
 	capacity = models.PositiveIntegerField(validators=[MinValueValidator(1)], help_text="Maximum number of seats")
 	location = models.CharField(max_length=20, choices=LOCATION_CHOICES, default='indoor')
 	
@@ -182,11 +182,14 @@ class Table(models.Model):
 		ordering = ['number']
 		verbose_name = 'Table'
 		verbose_name_plural = 'Tables'
+		# Ensure table numbers are unique per restaurant, not globally
+		unique_together = [['restaurant', 'number']]
 		indexes = [
 			models.Index(fields=['number']),
 			models.Index(fields=['status']),
 			models.Index(fields=['capacity']),
 			models.Index(fields=['location']),
+			models.Index(fields=['restaurant', 'number']),  # Index for unique constraint
 		]
 	
 	def __str__(self):

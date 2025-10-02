@@ -172,7 +172,7 @@ class TableSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at', 'is_available']
     
     def validate_number(self, value):
-        """Validate table number is positive and unique."""
+        """Validate table number is positive."""
         if value < 1:
             raise serializers.ValidationError("Table number must be positive.")
         return value
@@ -187,14 +187,7 @@ class TableSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         """Custom validation for table data."""
-        # Check if table number already exists for this restaurant (for creation)
-        if self.instance is None:  # Creating new table
-            restaurant = data.get('restaurant')
-            number = data.get('number')
-            if restaurant and number:
-                if Table.objects.filter(restaurant=restaurant, number=number).exists():
-                    raise serializers.ValidationError(
-                        {"number": f"Table {number} already exists for this restaurant."}
-                    )
-        
+        # Note: Table number uniqueness per restaurant is handled by the model's 
+        # unique_together constraint, which provides proper database-level validation
+        # and better error handling than duplicate serializer validation
         return data

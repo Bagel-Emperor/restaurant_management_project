@@ -196,6 +196,45 @@ class TableAPITestCase(TestCase):
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(set(response.data.keys()), expected_fields)
+    
+    def test_table_number_unique_per_restaurant(self):
+        """Test that table numbers are unique per restaurant, not globally."""
+        # Create a second restaurant
+        restaurant2 = Restaurant.objects.create(
+            name='Second Restaurant',
+            owner_name='Owner 2',
+            email='owner2@test.com',
+            phone_number='555-9876'
+        )
+        
+        # Create table 1 in first restaurant (already exists from setUp)
+        self.assertEqual(self.table1.number, 1)
+        self.assertEqual(self.table1.restaurant, self.restaurant)
+        
+        # Create table 1 in second restaurant - should be allowed
+        table1_restaurant2 = Table.objects.create(
+            number=1,
+            capacity=4,
+            location='outdoor',
+            restaurant=restaurant2
+        )
+        
+        self.assertEqual(table1_restaurant2.number, 1)
+        self.assertEqual(table1_restaurant2.restaurant, restaurant2)
+        
+        # Verify both tables exist and have same number but different restaurants
+        tables_with_number_1 = Table.objects.filter(number=1)
+        self.assertEqual(tables_with_number_1.count(), 2)
+        
+        # Try to create duplicate table number in same restaurant - should fail
+        from django.db import IntegrityError
+        with self.assertRaises(IntegrityError):
+            Table.objects.create(
+                number=1,
+                capacity=6,
+                location='indoor',
+                restaurant=self.restaurant  # Same restaurant as table1
+            )
 
 
 class TableModelTestCase(TestCase):

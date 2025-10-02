@@ -26,7 +26,7 @@ def get_daily_sales_total(target_date):
 ## Key Features
 
 ### ✅ **Complete Integration**
-- **Piggybasks on existing Order system**: Works seamlessly with the current shopping cart and order management functionality
+- **Piggybacks on existing Order system**: Works seamlessly with the current shopping cart and order management functionality
 - **Uses existing Order model**: Leverages the `total_amount` (DecimalField) and `created_at` (DateTimeField) fields
 - **Supports all order types**: Includes orders from authenticated users and guest customers
 - **Handles all order statuses**: Includes pending, completed, and cancelled orders

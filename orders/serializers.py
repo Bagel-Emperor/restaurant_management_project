@@ -2,8 +2,56 @@ from rest_framework import serializers
 from django.contrib.auth.models import User, BaseUserManager
 from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
-from .models import Customer, Order, OrderItem, OrderStatus, UserProfile
+from .models import Customer, Order, OrderItem, OrderStatus, UserProfile, Rider, Driver, Ride
 from home.models import MenuItem
+from decimal import Decimal
+
+
+# Shared validation helpers
+def validate_coordinates(pickup_lat, pickup_lng, drop_lat, drop_lng):
+    """
+    Validate ride coordinates for proper ranges and uniqueness.
+    
+    Uses Decimal comparison to preserve precision and avoid float artifacts.
+    Consolidates validation logic used across serializers and model clean methods.
+    
+    Args:
+        pickup_lat: Pickup latitude (Decimal or numeric)
+        pickup_lng: Pickup longitude (Decimal or numeric)
+        drop_lat: Dropoff latitude (Decimal or numeric)
+        drop_lng: Dropoff longitude (Decimal or numeric)
+        
+    Returns:
+        dict: Validation errors (empty if valid)
+    """
+    errors = {}
+    
+    # Convert to Decimal if not already
+    pickup_lat = Decimal(str(pickup_lat))
+    pickup_lng = Decimal(str(pickup_lng))
+    drop_lat = Decimal(str(drop_lat))
+    drop_lng = Decimal(str(drop_lng))
+    
+    # Validate latitude ranges
+    if not (Decimal('-90') <= pickup_lat <= Decimal('90')):
+        errors['pickup_lat'] = 'Latitude must be between -90 and 90'
+    
+    if not (Decimal('-90') <= drop_lat <= Decimal('90')):
+        errors['drop_lat'] = 'Latitude must be between -90 and 90'
+    
+    # Validate longitude ranges
+    if not (Decimal('-180') <= pickup_lng <= Decimal('180')):
+        errors['pickup_lng'] = 'Longitude must be between -180 and 180'
+    
+    if not (Decimal('-180') <= drop_lng <= Decimal('180')):
+        errors['drop_lng'] = 'Longitude must be between -180 and 180'
+    
+    # Validate pickup and dropoff are different
+    if pickup_lat == drop_lat and pickup_lng == drop_lng:
+        errors['non_field_errors'] = 'Pickup and dropoff locations must be different'
+    
+    return errors
+
 
 class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -632,3 +680,160 @@ class CouponValidationSerializer(serializers.Serializer):
             raise serializers.ValidationError({"code": "This field is required."})
         
         return super().to_internal_value(data)
+
+
+class RideSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Ride model with comprehensive field exposure and validation.
+    
+    Provides read-only computed fields for rider/driver information and
+    handles proper field visibility for different API operations.
+    """
+    
+    # Read-only computed fields for better API responses
+    rider_name = serializers.CharField(source='rider.user.username', read_only=True)
+    rider_phone = serializers.CharField(source='rider.phone', read_only=True)
+    
+    driver_name = serializers.CharField(source='driver.user.username', read_only=True, allow_null=True)
+    driver_phone = serializers.CharField(source='driver.phone', read_only=True, allow_null=True)
+    driver_vehicle = serializers.CharField(source='driver.vehicle_model', read_only=True, allow_null=True)
+    # driver_license removed to prevent PII leakage in public API responses
+    
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    
+    class Meta:
+        model = Ride
+        fields = [
+            'id',
+            'rider',
+            'rider_name',
+            'rider_phone',
+            'driver',
+            'driver_name',
+            'driver_phone',
+            'driver_vehicle',
+            'pickup_address',
+            'pickup_lat',
+            'pickup_lng',
+            'dropoff_address',
+            'drop_lat',
+            'drop_lng',
+            'status',
+            'status_display',
+            'requested_at',
+            'updated_at',
+            'accepted_at',
+            'completed_at',
+            'estimated_fare',
+            'final_fare',
+        ]
+        read_only_fields = [
+            'id',
+            'rider',
+            'driver',
+            'status',
+            'requested_at',
+            'updated_at',
+            'accepted_at',
+            'completed_at',
+            'rider_name',
+            'rider_phone',
+            'driver_name',
+            'driver_phone',
+            'driver_vehicle',
+            'status_display',
+        ]
+    
+    def validate(self, data):
+        """
+        Validate ride request data using shared coordinate validator.
+        """
+        # Use shared validator if all coordinates are present
+        if all(k in data for k in ['pickup_lat', 'pickup_lng', 'drop_lat', 'drop_lng']):
+            errors = validate_coordinates(
+                data['pickup_lat'],
+                data['pickup_lng'],
+                data['drop_lat'],
+                data['drop_lng']
+            )
+            if errors:
+                raise serializers.ValidationError(errors)
+        
+        return data
+    
+    def validate_pickup_address(self, value):
+        """Validate pickup address is not empty."""
+        if not value or not value.strip():
+            raise serializers.ValidationError('Pickup address cannot be empty')
+        return value.strip()
+    
+    def validate_dropoff_address(self, value):
+        """Validate dropoff address is not empty."""
+        if not value or not value.strip():
+            raise serializers.ValidationError('Dropoff address cannot be empty')
+        return value.strip()
+
+
+class RideRequestSerializer(serializers.ModelSerializer):
+    """
+    Serializer specifically for creating ride requests.
+    
+    Only exposes fields needed for ride booking, hiding system-managed fields.
+    """
+    
+    class Meta:
+        model = Ride
+        fields = [
+            'pickup_address',
+            'pickup_lat',
+            'pickup_lng',
+            'dropoff_address',
+            'drop_lat',
+            'drop_lng',
+        ]
+    
+    def validate(self, data):
+        """
+        Validate ride request data.
+        """
+        # Validate coordinates are within valid ranges
+        if not (-90 <= float(data['pickup_lat']) <= 90):
+            raise serializers.ValidationError({
+                'pickup_lat': 'Latitude must be between -90 and 90'
+            })
+        
+        if not (-180 <= float(data['pickup_lng']) <= 180):
+            raise serializers.ValidationError({
+                'pickup_lng': 'Longitude must be between -180 and 180'
+            })
+        
+        if not (-90 <= float(data['drop_lat']) <= 90):
+            raise serializers.ValidationError({
+                'drop_lat': 'Latitude must be between -90 and 90'
+            })
+        
+        if not (-180 <= float(data['drop_lng']) <= 180):
+            raise serializers.ValidationError({
+                'drop_lng': 'Longitude must be between -180 and 180'
+            })
+        
+        # Validate pickup and dropoff are different
+        if (data['pickup_lat'] == data['drop_lat'] and 
+            data['pickup_lng'] == data['drop_lng']):
+            raise serializers.ValidationError(
+                'Pickup and dropoff locations must be different'
+            )
+        
+        return data
+    
+    def validate_pickup_address(self, value):
+        """Validate pickup address is not empty."""
+        if not value or not value.strip():
+            raise serializers.ValidationError('Pickup address cannot be empty')
+        return value.strip()
+    
+    def validate_dropoff_address(self, value):
+        """Validate dropoff address is not empty."""
+        if not value or not value.strip():
+            raise serializers.ValidationError('Dropoff address cannot be empty')
+        return value.strip()

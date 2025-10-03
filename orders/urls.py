@@ -10,7 +10,10 @@ from .views import (
     RiderRegistrationView,
     DriverRegistrationView,
     OrderCancellationView,
-    CouponValidationView
+    CouponValidationView,
+    RideRequestView,
+    AvailableRidesView,
+    AcceptRideView
 )
 from .jwt_views import (
     CustomTokenObtainPairView,
@@ -38,6 +41,11 @@ urlpatterns = [
     # Registration endpoints
     path('register/rider/', RiderRegistrationView.as_view(), name='rider-registration'),
     path('register/driver/', DriverRegistrationView.as_view(), name='driver-registration'),
+    
+    # Ride booking endpoints (Rider → Driver workflow)
+    path('ride/request/', RideRequestView.as_view(), name='ride-request'),
+    path('ride/available/', AvailableRidesView.as_view(), name='available-rides'),
+    path('ride/accept/<int:ride_id>/', AcceptRideView.as_view(), name='accept-ride'),
     
     # JWT Authentication endpoints (custom views with enhanced features)
     path('auth/login/', jwt_login, name='jwt-login'),

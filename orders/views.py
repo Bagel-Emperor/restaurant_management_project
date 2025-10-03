@@ -8,9 +8,13 @@ from rest_framework.decorators import action
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from .models import Order, Customer, UserProfile, OrderStatus
-from .serializers import OrderSerializer, CustomerSerializer, OrderHistorySerializer, UserProfileSerializer, OrderDetailSerializer
+from .models import Order, Customer, UserProfile, OrderStatus, Rider, Driver, Ride
+from .serializers import OrderSerializer, CustomerSerializer, OrderHistorySerializer, UserProfileSerializer, OrderDetailSerializer, RideSerializer, RideRequestSerializer
 from .choices import OrderStatusChoices
+import logging
+
+# Module-level logger for efficient logging across all views
+logger = logging.getLogger(__name__)
 
 class CustomerOrderListView(generics.ListAPIView):
 	serializer_class = OrderSerializer
@@ -647,13 +651,221 @@ class CouponValidationView(APIView):
 			
 		except Exception as e:
 			# Log the error for debugging
-			import logging
-			logger = logging.getLogger(__name__)
 			# Use safe logging to handle cases where coupon_code might be undefined
 			logger.error(f"Error validating coupon '{coupon_code or 'undefined'}': {str(e)}", exc_info=True)
 			
 			return Response({
 				'success': False,
 				'message': 'An unexpected error occurred while validating the coupon',
+				'error_code': 'INTERNAL_ERROR'
+			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ============================================================================
+# Ride Booking Views (Rider → Driver)
+# ============================================================================
+
+class RideRequestView(APIView):
+	"""
+	API view for riders to request a new ride.
+	
+	POST /api/ride/request/
+	
+	Requires JWT authentication. Automatically assigns the ride to the
+	authenticated rider. Creates a ride with status='REQUESTED'.
+	
+	Expected request body:
+	{
+		"pickup_address": "Koramangala, Bangalore",
+		"dropoff_address": "MG Road, Bangalore",
+		"pickup_lat": 12.9352,
+		"pickup_lng": 77.6147,
+		"drop_lat": 12.9763,
+		"drop_lng": 77.6033
+	}
+	"""
+	
+	permission_classes = [permissions.IsAuthenticated]
+	
+	def post(self, request):
+		"""Create a new ride request."""
+		try:
+			# Verify user has a rider profile
+			try:
+				rider = request.user.rider_profile
+			except AttributeError:
+				logger.warning(f"User {request.user.username} attempted to request ride without rider profile")
+				return Response({
+					'success': False,
+					'message': 'User does not have a rider profile',
+					'error_code': 'NO_RIDER_PROFILE'
+				}, status=status.HTTP_403_FORBIDDEN)
+			
+			# Validate request data
+			serializer = RideRequestSerializer(data=request.data)
+			
+			if not serializer.is_valid():
+				logger.warning(f"Invalid ride request data from rider {rider.user.username}: {serializer.errors}")
+				return Response({
+					'success': False,
+					'message': 'Invalid ride request data',
+					'errors': serializer.errors,
+					'error_code': 'INVALID_DATA'
+				}, status=status.HTTP_400_BAD_REQUEST)
+			
+			# Create the ride
+			ride = serializer.save(rider=rider)
+			
+			logger.info(f"New ride request created: Ride #{ride.pk} by rider {rider.user.username}")
+			
+			# Return full ride details
+			response_serializer = RideSerializer(ride)
+			
+			return Response({
+				'success': True,
+				'message': 'Ride requested successfully',
+				'ride': response_serializer.data
+			}, status=status.HTTP_201_CREATED)
+			
+		except Exception as e:
+			logger.error(f"Error creating ride request: {str(e)}", exc_info=True)
+			return Response({
+				'success': False,
+				'message': 'An unexpected error occurred while requesting the ride',
+				'error_code': 'INTERNAL_ERROR'
+			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AvailableRidesView(APIView):
+	"""
+	API view for drivers to see available (unassigned) ride requests.
+	
+	GET /api/ride/available/
+	
+	Requires JWT authentication. Returns all rides with status='REQUESTED'
+	and no driver assigned. Orders by requested_at (oldest first) to ensure
+	fair allocation.
+	
+	Drivers can use this to find rides they can accept.
+	"""
+	
+	permission_classes = [permissions.IsAuthenticated]
+	
+	def get(self, request):
+		"""List all available ride requests."""
+		try:
+			# Verify user has a driver profile
+			try:
+				driver = request.user.driver_profile
+			except AttributeError:
+				logger.warning(f"User {request.user.username} attempted to view available rides without driver profile")
+				return Response({
+					'success': False,
+					'message': 'User does not have a driver profile',
+					'error_code': 'NO_DRIVER_PROFILE'
+				}, status=status.HTTP_403_FORBIDDEN)
+			
+			# Get all unassigned ride requests
+			available_rides = Ride.objects.filter(
+				status=Ride.STATUS_REQUESTED,
+				driver__isnull=True
+			).order_by('requested_at')
+			
+			# Serialize the rides
+			serializer = RideSerializer(available_rides, many=True)
+			
+			# Cache count to avoid duplicate database query
+			rides_count = available_rides.count()
+			
+			logger.info(f"Driver {driver.user.username} viewed {rides_count} available rides")
+			
+			return Response({
+				'success': True,
+				'count': rides_count,
+				'rides': serializer.data
+			}, status=status.HTTP_200_OK)
+			
+		except Exception as e:
+			logger.error(f"Error fetching available rides: {str(e)}", exc_info=True)
+			return Response({
+				'success': False,
+				'message': 'An unexpected error occurred while fetching available rides',
+				'error_code': 'INTERNAL_ERROR'
+			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AcceptRideView(APIView):
+	"""
+	API view for drivers to accept a ride request.
+	
+	POST /api/ride/accept/<ride_id>/
+	
+	Requires JWT authentication. Assigns the ride to the authenticated driver
+	and changes status to 'ONGOING'. Uses atomic transactions to prevent
+	race conditions where multiple drivers try to accept the same ride.
+	
+	Returns error if ride is already accepted or not in REQUESTED status.
+	"""
+	
+	permission_classes = [permissions.IsAuthenticated]
+	
+	def post(self, request, ride_id):
+		"""Accept a ride request."""
+		from django.db import transaction
+		
+		try:
+			# Verify user has a driver profile
+			try:
+				driver = request.user.driver_profile
+			except AttributeError:
+				logger.warning(f"User {request.user.username} attempted to accept ride without driver profile")
+				return Response({
+					'success': False,
+					'message': 'User does not have a driver profile',
+					'error_code': 'NO_DRIVER_PROFILE'
+				}, status=status.HTTP_403_FORBIDDEN)
+			
+			# Use atomic transaction to prevent race conditions
+			with transaction.atomic():
+				try:
+					# Lock the ride row to prevent concurrent updates
+					ride = Ride.objects.select_for_update().get(pk=ride_id)
+				except Ride.DoesNotExist:
+					logger.warning(f"Driver {driver.user.username} attempted to accept non-existent ride #{ride_id}")
+					return Response({
+						'success': False,
+						'message': f'Ride with ID {ride_id} not found',
+						'error_code': 'RIDE_NOT_FOUND'
+					}, status=status.HTTP_404_NOT_FOUND)
+				
+				# Try to accept the ride - model method handles all validation
+				success = ride.accept_ride(driver)
+				
+				if not success:
+					# Model method failed - ride not available
+					logger.warning(f"Driver {driver.user.username} failed to accept ride #{ride_id} (status: {ride.status}, driver: {ride.driver})")
+					return Response({
+						'success': False,
+						'message': f'Ride is no longer available (current status: {ride.get_status_display()})',
+						'error_code': 'RIDE_NOT_AVAILABLE',
+						'current_status': ride.status
+					}, status=status.HTTP_400_BAD_REQUEST)
+				
+				logger.info(f"Ride #{ride_id} accepted by driver {driver.user.username}")
+				
+				# Return updated ride details
+				serializer = RideSerializer(ride)
+				
+				return Response({
+					'success': True,
+					'message': 'Ride accepted successfully',
+					'ride': serializer.data
+				}, status=status.HTTP_200_OK)
+			
+		except Exception as e:
+			logger.error(f"Error accepting ride #{ride_id}: {str(e)}", exc_info=True)
+			return Response({
+				'success': False,
+				'message': 'An unexpected error occurred while accepting the ride',
 				'error_code': 'INTERNAL_ERROR'
 			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

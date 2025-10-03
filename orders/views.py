@@ -11,6 +11,10 @@ from django.utils import timezone
 from .models import Order, Customer, UserProfile, OrderStatus, Rider, Driver, Ride
 from .serializers import OrderSerializer, CustomerSerializer, OrderHistorySerializer, UserProfileSerializer, OrderDetailSerializer, RideSerializer, RideRequestSerializer
 from .choices import OrderStatusChoices
+import logging
+
+# Module-level logger for efficient logging across all views
+logger = logging.getLogger(__name__)
 
 class CustomerOrderListView(generics.ListAPIView):
 	serializer_class = OrderSerializer
@@ -647,8 +651,6 @@ class CouponValidationView(APIView):
 			
 		except Exception as e:
 			# Log the error for debugging
-			import logging
-			logger = logging.getLogger(__name__)
 			# Use safe logging to handle cases where coupon_code might be undefined
 			logger.error(f"Error validating coupon '{coupon_code or 'undefined'}': {str(e)}", exc_info=True)
 			
@@ -687,9 +689,6 @@ class RideRequestView(APIView):
 	
 	def post(self, request):
 		"""Create a new ride request."""
-		import logging
-		logger = logging.getLogger(__name__)
-		
 		try:
 			# Verify user has a rider profile
 			try:
@@ -754,9 +753,6 @@ class AvailableRidesView(APIView):
 	
 	def get(self, request):
 		"""List all available ride requests."""
-		import logging
-		logger = logging.getLogger(__name__)
-		
 		try:
 			# Verify user has a driver profile
 			try:
@@ -778,11 +774,14 @@ class AvailableRidesView(APIView):
 			# Serialize the rides
 			serializer = RideSerializer(available_rides, many=True)
 			
-			logger.info(f"Driver {driver.user.username} viewed {available_rides.count()} available rides")
+			# Cache count to avoid duplicate database query
+			rides_count = available_rides.count()
+			
+			logger.info(f"Driver {driver.user.username} viewed {rides_count} available rides")
 			
 			return Response({
 				'success': True,
-				'count': available_rides.count(),
+				'count': rides_count,
 				'rides': serializer.data
 			}, status=status.HTTP_200_OK)
 			
@@ -813,8 +812,6 @@ class AcceptRideView(APIView):
 	def post(self, request, ride_id):
 		"""Accept a ride request."""
 		from django.db import transaction
-		import logging
-		logger = logging.getLogger(__name__)
 		
 		try:
 			# Verify user has a driver profile
@@ -841,33 +838,17 @@ class AcceptRideView(APIView):
 						'error_code': 'RIDE_NOT_FOUND'
 					}, status=status.HTTP_404_NOT_FOUND)
 				
-				# Check if ride is still available
-				if ride.status != Ride.STATUS_REQUESTED:
-					logger.warning(f"Driver {driver.user.username} attempted to accept ride #{ride_id} with status {ride.status}")
+				# Try to accept the ride - model method handles all validation
+				success = ride.accept_ride(driver)
+				
+				if not success:
+					# Model method failed - ride not available
+					logger.warning(f"Driver {driver.user.username} failed to accept ride #{ride_id} (status: {ride.status}, driver: {ride.driver})")
 					return Response({
 						'success': False,
 						'message': f'Ride is no longer available (current status: {ride.get_status_display()})',
 						'error_code': 'RIDE_NOT_AVAILABLE',
 						'current_status': ride.status
-					}, status=status.HTTP_400_BAD_REQUEST)
-				
-				if ride.driver is not None:
-					logger.warning(f"Driver {driver.user.username} attempted to accept ride #{ride_id} already assigned to {ride.driver.user.username}")
-					return Response({
-						'success': False,
-						'message': 'Ride already accepted by another driver',
-						'error_code': 'RIDE_ALREADY_ACCEPTED'
-					}, status=status.HTTP_400_BAD_REQUEST)
-				
-				# Accept the ride
-				success = ride.accept_ride(driver)
-				
-				if not success:
-					logger.error(f"Failed to accept ride #{ride_id} for driver {driver.user.username}")
-					return Response({
-						'success': False,
-						'message': 'Failed to accept ride',
-						'error_code': 'ACCEPTANCE_FAILED'
 					}, status=status.HTTP_400_BAD_REQUEST)
 				
 				logger.info(f"Ride #{ride_id} accepted by driver {driver.user.username}")

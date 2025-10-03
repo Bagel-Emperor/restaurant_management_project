@@ -4,6 +4,54 @@ from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
 from .models import Customer, Order, OrderItem, OrderStatus, UserProfile, Rider, Driver, Ride
 from home.models import MenuItem
+from decimal import Decimal
+
+
+# Shared validation helpers
+def validate_coordinates(pickup_lat, pickup_lng, drop_lat, drop_lng):
+    """
+    Validate ride coordinates for proper ranges and uniqueness.
+    
+    Uses Decimal comparison to preserve precision and avoid float artifacts.
+    Consolidates validation logic used across serializers and model clean methods.
+    
+    Args:
+        pickup_lat: Pickup latitude (Decimal or numeric)
+        pickup_lng: Pickup longitude (Decimal or numeric)
+        drop_lat: Dropoff latitude (Decimal or numeric)
+        drop_lng: Dropoff longitude (Decimal or numeric)
+        
+    Returns:
+        dict: Validation errors (empty if valid)
+    """
+    errors = {}
+    
+    # Convert to Decimal if not already
+    pickup_lat = Decimal(str(pickup_lat))
+    pickup_lng = Decimal(str(pickup_lng))
+    drop_lat = Decimal(str(drop_lat))
+    drop_lng = Decimal(str(drop_lng))
+    
+    # Validate latitude ranges
+    if not (Decimal('-90') <= pickup_lat <= Decimal('90')):
+        errors['pickup_lat'] = 'Latitude must be between -90 and 90'
+    
+    if not (Decimal('-90') <= drop_lat <= Decimal('90')):
+        errors['drop_lat'] = 'Latitude must be between -90 and 90'
+    
+    # Validate longitude ranges
+    if not (Decimal('-180') <= pickup_lng <= Decimal('180')):
+        errors['pickup_lng'] = 'Longitude must be between -180 and 180'
+    
+    if not (Decimal('-180') <= drop_lng <= Decimal('180')):
+        errors['drop_lng'] = 'Longitude must be between -180 and 180'
+    
+    # Validate pickup and dropoff are different
+    if pickup_lat == drop_lat and pickup_lng == drop_lng:
+        errors['non_field_errors'] = 'Pickup and dropoff locations must be different'
+    
+    return errors
+
 
 class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -649,7 +697,7 @@ class RideSerializer(serializers.ModelSerializer):
     driver_name = serializers.CharField(source='driver.user.username', read_only=True, allow_null=True)
     driver_phone = serializers.CharField(source='driver.phone', read_only=True, allow_null=True)
     driver_vehicle = serializers.CharField(source='driver.vehicle_model', read_only=True, allow_null=True)
-    driver_license = serializers.CharField(source='driver.license_number', read_only=True, allow_null=True)
+    # driver_license removed to prevent PII leakage in public API responses
     
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     
@@ -664,7 +712,6 @@ class RideSerializer(serializers.ModelSerializer):
             'driver_name',
             'driver_phone',
             'driver_vehicle',
-            'driver_license',
             'pickup_address',
             'pickup_lat',
             'pickup_lng',
@@ -694,46 +741,23 @@ class RideSerializer(serializers.ModelSerializer):
             'driver_name',
             'driver_phone',
             'driver_vehicle',
-            'driver_license',
             'status_display',
         ]
     
     def validate(self, data):
         """
-        Validate ride request data.
+        Validate ride request data using shared coordinate validator.
         """
-        # Validate coordinates are within valid ranges
-        if 'pickup_lat' in data:
-            if not (-90 <= float(data['pickup_lat']) <= 90):
-                raise serializers.ValidationError({
-                    'pickup_lat': 'Latitude must be between -90 and 90'
-                })
-        
-        if 'pickup_lng' in data:
-            if not (-180 <= float(data['pickup_lng']) <= 180):
-                raise serializers.ValidationError({
-                    'pickup_lng': 'Longitude must be between -180 and 180'
-                })
-        
-        if 'drop_lat' in data:
-            if not (-90 <= float(data['drop_lat']) <= 90):
-                raise serializers.ValidationError({
-                    'drop_lat': 'Latitude must be between -90 and 90'
-                })
-        
-        if 'drop_lng' in data:
-            if not (-180 <= float(data['drop_lng']) <= 180):
-                raise serializers.ValidationError({
-                    'drop_lng': 'Longitude must be between -180 and 180'
-                })
-        
-        # Validate pickup and dropoff are different
+        # Use shared validator if all coordinates are present
         if all(k in data for k in ['pickup_lat', 'pickup_lng', 'drop_lat', 'drop_lng']):
-            if (data['pickup_lat'] == data['drop_lat'] and 
-                data['pickup_lng'] == data['drop_lng']):
-                raise serializers.ValidationError(
-                    'Pickup and dropoff locations must be different'
-                )
+            errors = validate_coordinates(
+                data['pickup_lat'],
+                data['pickup_lng'],
+                data['drop_lat'],
+                data['drop_lng']
+            )
+            if errors:
+                raise serializers.ValidationError(errors)
         
         return data
     

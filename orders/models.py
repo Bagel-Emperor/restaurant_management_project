@@ -910,25 +910,22 @@ class Ride(models.Model):
         verbose_name_plural = 'Rides'
     
     def clean(self):
-        """Validate ride data before saving."""
+        """Validate ride data before saving using shared validation logic."""
         from django.core.exceptions import ValidationError
         
-        # Validate coordinates are within valid ranges
-        if not (-90 <= float(self.pickup_lat) <= 90):
-            raise ValidationError({'pickup_lat': 'Latitude must be between -90 and 90'})
+        # Import shared validator to avoid duplication
+        from .serializers import validate_coordinates
         
-        if not (-180 <= float(self.pickup_lng) <= 180):
-            raise ValidationError({'pickup_lng': 'Longitude must be between -180 and 180'})
+        # Use shared coordinate validator
+        errors = validate_coordinates(
+            self.pickup_lat,
+            self.pickup_lng,
+            self.drop_lat,
+            self.drop_lng
+        )
         
-        if not (-90 <= float(self.drop_lat) <= 90):
-            raise ValidationError({'drop_lat': 'Latitude must be between -90 and 90'})
-        
-        if not (-180 <= float(self.drop_lng) <= 180):
-            raise ValidationError({'drop_lng': 'Longitude must be between -180 and 180'})
-        
-        # Validate pickup and dropoff are different
-        if (self.pickup_lat == self.drop_lat and self.pickup_lng == self.drop_lng):
-            raise ValidationError('Pickup and dropoff locations must be different')
+        if errors:
+            raise ValidationError(errors)
     
     def accept_ride(self, driver):
         """

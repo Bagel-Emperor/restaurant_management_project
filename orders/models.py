@@ -774,3 +774,213 @@ class Coupon(models.Model):
     def __str__(self):
         status = "Active" if self.is_active else "Inactive"
         return f"{self.code} ({self.discount_percentage}% off) - {status}"
+
+
+class Ride(models.Model):
+    """
+    Ride model for ride-sharing booking system.
+    
+    Represents a ride request from a rider to a driver, tracking the complete
+    lifecycle from request through completion or cancellation. Implements status
+    state machine with proper transitions and race condition prevention.
+    
+    Status Flow:
+        REQUESTED -> ONGOING -> COMPLETED
+                  -> CANCELLED (from any state)
+    """
+    
+    # Status choices for ride lifecycle
+    STATUS_REQUESTED = 'REQUESTED'
+    STATUS_ONGOING = 'ONGOING'
+    STATUS_COMPLETED = 'COMPLETED'
+    STATUS_CANCELLED = 'CANCELLED'
+    
+    STATUS_CHOICES = [
+        (STATUS_REQUESTED, 'Requested'),
+        (STATUS_ONGOING, 'Ongoing'),
+        (STATUS_COMPLETED, 'Completed'),
+        (STATUS_CANCELLED, 'Cancelled'),
+    ]
+    
+    # Relationships
+    rider = models.ForeignKey(
+        Rider,
+        on_delete=models.CASCADE,
+        related_name='rides',
+        help_text="Rider who requested this ride"
+    )
+    
+    driver = models.ForeignKey(
+        Driver,
+        on_delete=models.SET_NULL,
+        related_name='rides',
+        null=True,
+        blank=True,
+        help_text="Driver assigned to this ride (null until accepted)"
+    )
+    
+    # Pickup Location
+    pickup_address = models.CharField(
+        max_length=500,
+        help_text="Human-readable pickup address"
+    )
+    pickup_lat = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        help_text="Pickup latitude coordinate"
+    )
+    pickup_lng = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        help_text="Pickup longitude coordinate"
+    )
+    
+    # Dropoff Location
+    dropoff_address = models.CharField(
+        max_length=500,
+        help_text="Human-readable dropoff address"
+    )
+    drop_lat = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        help_text="Dropoff latitude coordinate"
+    )
+    drop_lng = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        help_text="Dropoff longitude coordinate"
+    )
+    
+    # Status and Timestamps
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_REQUESTED,
+        db_index=True,
+        help_text="Current status of the ride"
+    )
+    
+    requested_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the ride was requested"
+    )
+    
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="Last time the ride was updated"
+    )
+    
+    accepted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the driver accepted the ride"
+    )
+    
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the ride was completed"
+    )
+    
+    # Future fields for fare calculation (to be implemented later)
+    estimated_fare = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Estimated fare for the ride"
+    )
+    
+    final_fare = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Final calculated fare after completion"
+    )
+    
+    class Meta:
+        ordering = ['-requested_at']
+        indexes = [
+            models.Index(fields=['status', 'requested_at']),
+            models.Index(fields=['rider', 'status']),
+            models.Index(fields=['driver', 'status']),
+        ]
+        verbose_name = 'Ride'
+        verbose_name_plural = 'Rides'
+    
+    def clean(self):
+        """Validate ride data before saving."""
+        from django.core.exceptions import ValidationError
+        
+        # Validate coordinates are within valid ranges
+        if not (-90 <= float(self.pickup_lat) <= 90):
+            raise ValidationError({'pickup_lat': 'Latitude must be between -90 and 90'})
+        
+        if not (-180 <= float(self.pickup_lng) <= 180):
+            raise ValidationError({'pickup_lng': 'Longitude must be between -180 and 180'})
+        
+        if not (-90 <= float(self.drop_lat) <= 90):
+            raise ValidationError({'drop_lat': 'Latitude must be between -90 and 90'})
+        
+        if not (-180 <= float(self.drop_lng) <= 180):
+            raise ValidationError({'drop_lng': 'Longitude must be between -180 and 180'})
+        
+        # Validate pickup and dropoff are different
+        if (self.pickup_lat == self.drop_lat and self.pickup_lng == self.drop_lng):
+            raise ValidationError('Pickup and dropoff locations must be different')
+    
+    def accept_ride(self, driver):
+        """
+        Accept a ride and assign it to a driver.
+        
+        This method should be called within a transaction to prevent race conditions.
+        Returns True if successful, False if ride was already accepted.
+        """
+        from django.utils import timezone
+        
+        if self.status != self.STATUS_REQUESTED:
+            return False
+        
+        if self.driver is not None:
+            return False
+        
+        self.driver = driver
+        self.status = self.STATUS_ONGOING
+        self.accepted_at = timezone.now()
+        self.save(update_fields=['driver', 'status', 'accepted_at', 'updated_at'])
+        
+        return True
+    
+    def complete_ride(self, final_fare=None):
+        """Mark ride as completed (to be expanded in future tasks)."""
+        from django.utils import timezone
+        
+        if self.status != self.STATUS_ONGOING:
+            return False
+        
+        self.status = self.STATUS_COMPLETED
+        self.completed_at = timezone.now()
+        
+        if final_fare is not None:
+            self.final_fare = final_fare
+        
+        self.save(update_fields=['status', 'completed_at', 'final_fare', 'updated_at'])
+        return True
+    
+    def cancel_ride(self):
+        """Cancel a ride (can be done from any status except completed)."""
+        if self.status == self.STATUS_COMPLETED:
+            return False
+        
+        self.status = self.STATUS_CANCELLED
+        self.save(update_fields=['status', 'updated_at'])
+        return True
+    
+    def __str__(self):
+        return f"Ride #{self.pk} - {self.rider.user.username} -> {self.status}"
+    
+    def __repr__(self):
+        return (f"<Ride id={self.pk} rider={self.rider.user.username} "
+                f"driver={self.driver.user.username if self.driver else 'None'} "
+                f"status={self.status}>")

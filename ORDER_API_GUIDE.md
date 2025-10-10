@@ -41,10 +41,8 @@ Authorization: Bearer <your_jwt_token>
 | `GET` | `/PerpexBistro/orders/orders/` | List customer orders | Optional |
 | `GET` | `/PerpexBistro/orders/orders/<id>/` | Get order details | Optional |
 | `GET` | `/PerpexBistro/orders/orders/history/` | User order history | Required |
-| `POST` | `/PerpexBistro/orders/orders/update-status/` | Update order status | Optional* |
+| `POST` | `/PerpexBistro/orders/orders/update-status/` | Update order status | **Required** |
 | `DELETE` | `/PerpexBistro/orders/orders/<id>/cancel/` | Cancel order | Optional |
-
-*Permission can be restricted to admin users as needed
 
 ---
 
@@ -269,6 +267,9 @@ Update the status of an existing order with validation for state transitions.
 POST /PerpexBistro/orders/orders/update-status/
 ```
 
+### Authentication
+**Required** - User must be authenticated with valid JWT token or session
+
 ### Request Body
 ```json
 {
@@ -298,6 +299,13 @@ POST /PerpexBistro/orders/orders/update-status/
 ```
 
 ### Error Responses
+
+#### Unauthenticated Request (401 Unauthorized)
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
 
 #### Invalid Order ID (404 Not Found)
 ```json

@@ -1358,7 +1358,7 @@ class UpdateOrderStatusView(APIView):
 			"errors": {"status": ["Invalid status transition from 'Completed' to 'Pending'"]}
 		}
 	"""
-	permission_classes = [permissions.AllowAny]  # Can be changed to IsAuthenticated/IsAdminUser as needed
+	permission_classes = [permissions.IsAuthenticated]  # Restrict to authenticated users only
 	
 	def post(self, request, *args, **kwargs):
 		"""Handle POST request to update order status."""
@@ -1383,11 +1383,14 @@ class UpdateOrderStatusView(APIView):
 			# Get or create the new status object
 			new_status, created = OrderStatus.objects.get_or_create(name=new_status_name)
 			
-			# Update the order status
+			# Update the order status (auto_now will update updated_at automatically)
 			order.status = new_status
 			order.save()
 			
-			logger.info(f"Order {order_id} status updated from '{previous_status}' to '{new_status_name}'")
+			# Refresh from database to get the updated timestamp
+			order.refresh_from_db()
+			
+			logger.info(f"Order {order_id} status updated from '{previous_status}' to '{new_status_name}' by user {request.user.username}")
 			
 			return Response({
 				'success': True,
@@ -1396,7 +1399,7 @@ class UpdateOrderStatusView(APIView):
 					'order_id': order.order_id,
 					'status': order.status.name,
 					'previous_status': previous_status,
-					'updated_at': timezone.now().isoformat()
+					'updated_at': order.updated_at.isoformat()
 				}
 			}, status=status.HTTP_200_OK)
 			

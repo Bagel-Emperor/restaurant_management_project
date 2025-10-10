@@ -65,6 +65,7 @@ class Order(models.Model):
     status = models.ForeignKey('OrderStatus', null=False, on_delete=models.PROTECT, related_name='orders')
     total_amount = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     # User-friendly unique order ID for display and tracking
     order_id = models.CharField(

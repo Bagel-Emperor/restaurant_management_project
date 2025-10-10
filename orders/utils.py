@@ -17,6 +17,59 @@ from django.db.models import Sum
 
 from orders.models import Order
 
+
+def calculate_discount(subtotal, coupon):
+    """
+    Calculate the discount amount for an order based on a coupon.
+    
+    Takes the order subtotal and a Coupon instance, and calculates the discount
+    amount based on the coupon's discount percentage. Returns zero if the coupon
+    is None or invalid.
+    
+    Args:
+        subtotal (Decimal): The order subtotal before discount
+        coupon (Coupon or None): Coupon instance to apply, or None
+    
+    Returns:
+        Decimal: The discount amount (always non-negative)
+    
+    Example:
+        >>> from decimal import Decimal
+        >>> from orders.models import Coupon
+        >>> # Assuming a coupon with 10% discount exists
+        >>> coupon = Coupon.objects.filter(is_active=True).first()
+        >>> if coupon:
+        ...     calculate_discount(Decimal('100.00'), coupon)
+        Decimal('10.00')
+        
+        >>> # No coupon returns zero discount
+        >>> calculate_discount(Decimal('100.00'), None)
+        Decimal('0.00')
+    
+    Notes:
+        - Returns Decimal('0.00') if coupon is None
+        - Returns Decimal('0.00') if coupon is not valid (inactive or expired)
+        - Discount is calculated as: subtotal × (discount_percentage / 100)
+        - Result is quantized to 2 decimal places (cent precision)
+    """
+    # No coupon means no discount
+    if coupon is None:
+        return Decimal('0.00')
+    
+    # Check if coupon can be used (valid date + usage available + is_active)
+    if not coupon.can_be_used():
+        return Decimal('0.00')
+    
+    # Calculate discount: subtotal × (percentage / 100)
+    discount_amount = subtotal * (coupon.discount_percentage / Decimal('100'))
+    
+    # Ensure discount doesn't exceed subtotal (shouldn't happen with max 100% validation)
+    discount_amount = min(discount_amount, subtotal)
+    
+    # Quantize to 2 decimal places for currency precision
+    return discount_amount.quantize(Decimal('0.01'))
+
+
 def generate_coupon_code(length=10, existing_codes=None):
     """
     Generate a unique alphanumeric coupon code.

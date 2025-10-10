@@ -837,3 +837,80 @@ class RideRequestSerializer(serializers.ModelSerializer):
         if not value or not value.strip():
             raise serializers.ValidationError('Dropoff address cannot be empty')
         return value.strip()
+
+
+# ================================
+# ORDER STATUS UPDATE SERIALIZER
+# ================================
+
+class UpdateOrderStatusSerializer(serializers.Serializer):
+    """
+    Serializer for updating order status.
+    
+    Validates order_id existence and ensures status is one of the allowed choices.
+    Used by UpdateOrderStatusView to safely update order statuses.
+    """
+    order_id = serializers.CharField(
+        max_length=20,
+        required=True,
+        help_text="Unique alphanumeric order identifier (e.g., ORD-A7X9K2M5)"
+    )
+    status = serializers.ChoiceField(
+        choices=[
+            ('Pending', 'Pending'),
+            ('Processing', 'Processing'),
+            ('Completed', 'Completed'),
+            ('Cancelled', 'Cancelled'),
+        ],
+        required=True,
+        help_text="New status for the order"
+    )
+    
+    def validate_order_id(self, value):
+        """Validate that the order exists."""
+        from .models import Order
+        try:
+            order = Order.objects.get(order_id=value)
+        except Order.DoesNotExist:
+            raise serializers.ValidationError(f"Order with ID '{value}' does not exist.")
+        return value
+    
+    def validate(self, data):
+        """Additional validation for status transitions."""
+        from .models import Order
+        
+        # Get the order
+        try:
+            order = Order.objects.get(order_id=data['order_id'])
+        except Order.DoesNotExist:
+            # This should not happen as we validate in validate_order_id, but just in case
+            raise serializers.ValidationError("Order does not exist.")
+        
+        # Define valid status transitions
+        valid_transitions = {
+            'Pending': ['Processing', 'Cancelled'],
+            'Processing': ['Completed', 'Cancelled'],
+            'Completed': [],  # Cannot change from Completed
+            'Cancelled': [],  # Cannot change from Cancelled
+        }
+        
+        current_status = order.status.name
+        new_status = data['status']
+        
+        # Check if transition is allowed
+        if new_status not in valid_transitions.get(current_status, []):
+            if current_status == new_status:
+                raise serializers.ValidationError(
+                    f"Order is already in '{current_status}' status."
+                )
+            elif current_status in ['Completed', 'Cancelled']:
+                raise serializers.ValidationError(
+                    f"Cannot change status from '{current_status}'. This order is finalized."
+                )
+            else:
+                raise serializers.ValidationError(
+                    f"Invalid status transition from '{current_status}' to '{new_status}'. "
+                    f"Allowed transitions: {', '.join(valid_transitions[current_status])}"
+                )
+        
+        return data

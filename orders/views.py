@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from decimal import Decimal
 from .models import Order, Customer, UserProfile, OrderStatus, Rider, Driver, Ride
-from .serializers import OrderSerializer, CustomerSerializer, OrderHistorySerializer, UserProfileSerializer, OrderDetailSerializer, RideSerializer, RideRequestSerializer
+from .serializers import OrderSerializer, CustomerSerializer, OrderHistorySerializer, UserProfileSerializer, OrderDetailSerializer, RideSerializer, RideRequestSerializer, UpdateOrderStatusSerializer
 from .choices import OrderStatusChoices
 import logging
 
@@ -1320,3 +1320,99 @@ class DriverHistoryView(generics.ListAPIView):
 			'previous': response.data['previous'],
 			'results': response.data['results']
 		}, status=status.HTTP_200_OK)
+
+
+# ================================
+# ORDER STATUS UPDATE API VIEW
+# ================================
+
+class UpdateOrderStatusView(APIView):
+	"""
+	API view to update the status of an order.
+	
+	Accepts POST request with order_id and new status. Validates the status transition
+	and updates the order in the database. Returns appropriate error messages for
+	invalid order IDs, invalid status values, or disallowed status transitions.
+	
+	Request Body:
+		{
+			"order_id": "ORD-A7X9K2M5",
+			"status": "Processing"
+		}
+	
+	Response (Success):
+		{
+			"success": true,
+			"message": "Order status updated successfully",
+			"order": {
+				"order_id": "ORD-A7X9K2M5",
+				"status": "Processing",
+				"previous_status": "Pending",
+				"updated_at": "2025-10-09T10:30:00Z"
+			}
+		}
+	
+	Response (Error):
+		{
+			"success": false,
+			"errors": {"status": ["Invalid status transition from 'Completed' to 'Pending'"]}
+		}
+	"""
+	permission_classes = [permissions.IsAuthenticated]  # Restrict to authenticated users only
+	
+	def post(self, request, *args, **kwargs):
+		"""Handle POST request to update order status."""
+		serializer = UpdateOrderStatusSerializer(data=request.data)
+		
+		if not serializer.is_valid():
+			logger.warning(f"Order status update failed validation: {serializer.errors}")
+			return Response({
+				'success': False,
+				'errors': serializer.errors
+			}, status=status.HTTP_400_BAD_REQUEST)
+		
+		# Get validated data
+		order_id = serializer.validated_data['order_id']
+		new_status_name = serializer.validated_data['status']
+		
+		try:
+			# Get the order
+			order = Order.objects.select_related('status').get(order_id=order_id)
+			previous_status = order.status.name
+			
+			# Get or create the new status object
+			new_status, created = OrderStatus.objects.get_or_create(name=new_status_name)
+			
+			# Update the order status (auto_now will update updated_at automatically)
+			order.status = new_status
+			order.save()
+			
+			# Refresh from database to get the updated timestamp
+			order.refresh_from_db()
+			
+			logger.info(f"Order {order_id} status updated from '{previous_status}' to '{new_status_name}' by user {request.user.username}")
+			
+			return Response({
+				'success': True,
+				'message': 'Order status updated successfully',
+				'order': {
+					'order_id': order.order_id,
+					'status': order.status.name,
+					'previous_status': previous_status,
+					'updated_at': order.updated_at.isoformat()
+				}
+			}, status=status.HTTP_200_OK)
+			
+		except Order.DoesNotExist:
+			logger.error(f"Order {order_id} not found during status update")
+			return Response({
+				'success': False,
+				'errors': {'order_id': [f"Order with ID '{order_id}' does not exist."]}
+			}, status=status.HTTP_404_NOT_FOUND)
+		
+		except Exception as e:
+			logger.error(f"Unexpected error updating order {order_id}: {str(e)}")
+			return Response({
+				'success': False,
+				'errors': {'detail': 'An unexpected error occurred while updating the order status.'}
+			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

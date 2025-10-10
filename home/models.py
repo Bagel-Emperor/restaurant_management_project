@@ -46,6 +46,10 @@ class MenuItem(models.Model):
 	restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='menu_items')
 	category = models.ForeignKey('MenuCategory', on_delete=models.SET_NULL, null=True, blank=True, related_name='menu_items')
 	is_available = models.BooleanField(default=True)
+	is_daily_special = models.BooleanField(
+		default=False,
+		help_text="Mark this item as a daily special to feature it prominently"
+	)
 	created_at = models.DateTimeField(auto_now_add=True)
 	image = models.ImageField(upload_to='menu_images/', blank=True, null=True)
 

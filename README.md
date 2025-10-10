@@ -73,7 +73,9 @@ This repository contains the code for a comprehensive restaurant management and 
 - **[Order API Guide](ORDER_API_GUIDE.md)** - Complete order management API documentation
 - **[Order Cancellation API](ORDER_CANCELLATION_API.md)** - Order cancellation endpoint details
 - **[Order Manager Guide](ORDER_MANAGER_GUIDE.md)** - Custom order manager implementation
+- **[Order Total Calculation Guide](ORDER_TOTAL_CALCULATION_GUIDE.md)** - Order total with discount support
 - **[Menu Item API Guide](MENU_ITEM_API_GUIDE.md)** - Menu management APIs
+- **[Daily Specials API Guide](DAILY_SPECIALS_API_GUIDE.md)** - Daily specials endpoint documentation
 - **[Shopping Cart Guide](SHOPPING_CART_GUIDE.md)** - Cart functionality documentation
 - **[Search API Guide](SEARCH_API_GUIDE.md)** - Search and filtering APIs
 - **[Ride Booking Documentation](RIDE_BOOKING_DOCS.md)** - Ride-sharing platform APIs
@@ -108,6 +110,7 @@ This repository contains the code for a comprehensive restaurant management and 
 - **`GET /PerpexBistro/menu/items/`** - List menu items
 - **`GET /PerpexBistro/menu/categories/`** - List menu categories
 - **`GET /PerpexBistro/menu/search/`** - Search menu items
+- **`GET /api/daily-specials/`** - Get daily specials (public, no auth required)
 
 ### User Order History
 Authenticated users can retrieve their order history with full details.

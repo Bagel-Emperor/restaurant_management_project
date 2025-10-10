@@ -1330,9 +1330,9 @@ class UpdateOrderStatusView(APIView):
 	"""
 	API view to update the status of an order.
 	
-	Accepts POST request with order_id and new status. Validates the status transition
-	and updates the order in the database. Returns appropriate error messages for
-	invalid order IDs, invalid status values, or disallowed status transitions.
+	Accepts POST or PUT request with order_id and new status. Validates the status 
+	transition and updates the order in the database. Returns appropriate error messages 
+	for invalid order IDs, invalid status values, or disallowed status transitions.
 	
 	Request Body:
 		{
@@ -1360,8 +1360,16 @@ class UpdateOrderStatusView(APIView):
 	"""
 	permission_classes = [permissions.IsAuthenticated]  # Restrict to authenticated users only
 	
-	def post(self, request, *args, **kwargs):
-		"""Handle POST request to update order status."""
+	def _update_order_status(self, request):
+		"""
+		Common method to handle order status updates for both POST and PUT requests.
+		
+		Args:
+			request: The HTTP request object
+			
+		Returns:
+			Response: DRF Response object with success/error data
+		"""
 		serializer = UpdateOrderStatusSerializer(data=request.data)
 		
 		if not serializer.is_valid():
@@ -1416,3 +1424,11 @@ class UpdateOrderStatusView(APIView):
 				'success': False,
 				'errors': {'detail': 'An unexpected error occurred while updating the order status.'}
 			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+	
+	def post(self, request, *args, **kwargs):
+		"""Handle POST request to update order status."""
+		return self._update_order_status(request)
+	
+	def put(self, request, *args, **kwargs):
+		"""Handle PUT request to update order status."""
+		return self._update_order_status(request)

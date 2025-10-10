@@ -41,7 +41,7 @@ Authorization: Bearer <your_jwt_token>
 | `GET` | `/PerpexBistro/orders/orders/` | List customer orders | Optional |
 | `GET` | `/PerpexBistro/orders/orders/<id>/` | Get order details | Optional |
 | `GET` | `/PerpexBistro/orders/orders/history/` | User order history | Required |
-| `POST` | `/PerpexBistro/orders/orders/update-status/` | Update order status | **Required** |
+| `POST/PUT` | `/PerpexBistro/orders/orders/update-status/` | Update order status | **Required** |
 | `DELETE` | `/PerpexBistro/orders/orders/<id>/cancel/` | Cancel order | Optional |
 
 ---
@@ -265,7 +265,10 @@ Update the status of an existing order with validation for state transitions.
 ### Endpoint
 ```
 POST /PerpexBistro/orders/orders/update-status/
+PUT /PerpexBistro/orders/orders/update-status/
 ```
+
+**Note**: Both POST and PUT methods are supported and behave identically. Use whichever is more appropriate for your application's RESTful design.
 
 ### Authentication
 **Required** - User must be authenticated with valid JWT token or session
@@ -365,7 +368,7 @@ POST /PerpexBistro/orders/orders/update-status/
 
 #### Using cURL
 ```bash
-# Update order to Processing
+# Update order to Processing (using POST)
 curl -X POST http://localhost:8000/PerpexBistro/orders/orders/update-status/ \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <your_jwt_token>" \
@@ -374,9 +377,10 @@ curl -X POST http://localhost:8000/PerpexBistro/orders/orders/update-status/ \
     "status": "Processing"
   }'
 
-# Complete an order
-curl -X POST http://localhost:8000/PerpexBistro/orders/orders/update-status/ \
+# Complete an order (using PUT)
+curl -X PUT http://localhost:8000/PerpexBistro/orders/orders/update-status/ \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your_jwt_token>" \
   -d '{
     "order_id": "ORD-A7X9K2M5",
     "status": "Completed"
@@ -397,7 +401,12 @@ data = {
     "status": "Processing"
 }
 
+# Using POST
 response = requests.post(url, json=data, headers=headers)
+print(response.json())
+
+# OR using PUT (both work the same)
+response = requests.put(url, json=data, headers=headers)
 print(response.json())
 ```
 

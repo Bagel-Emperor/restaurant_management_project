@@ -70,9 +70,13 @@ This repository contains the code for a comprehensive restaurant management and 
 
 - **[JWT Authentication Guide](JWT_AUTHENTICATION.md)** - Complete JWT implementation guide
 - **[Registration API Docs](REGISTRATION_API_DOCS.md)** - Rider and driver registration APIs
+- **[Order API Guide](ORDER_API_GUIDE.md)** - Complete order management API documentation
+- **[Order Cancellation API](ORDER_CANCELLATION_API.md)** - Order cancellation endpoint details
+- **[Order Manager Guide](ORDER_MANAGER_GUIDE.md)** - Custom order manager implementation
 - **[Menu Item API Guide](MENU_ITEM_API_GUIDE.md)** - Menu management APIs
 - **[Shopping Cart Guide](SHOPPING_CART_GUIDE.md)** - Cart functionality documentation
 - **[Search API Guide](SEARCH_API_GUIDE.md)** - Search and filtering APIs
+- **[Ride Booking Documentation](RIDE_BOOKING_DOCS.md)** - Ride-sharing platform APIs
 - **[Production Readiness Audit](PRODUCTION_READINESS_AUDIT.md)** - Security and deployment checklist
 
 ## 🚀 API Endpoints
@@ -97,6 +101,8 @@ This repository contains the code for a comprehensive restaurant management and 
 - **`POST /PerpexBistro/orders/orders/create/`** - Create new order
 - **`GET /PerpexBistro/orders/orders/history/`** - User order history
 - **`GET /PerpexBistro/orders/orders/<id>/`** - Order details
+- **`POST /PerpexBistro/orders/orders/update-status/`** - Update order status
+- **`DELETE /PerpexBistro/orders/orders/<id>/cancel/`** - Cancel order
 
 #### Menu Management
 - **`GET /PerpexBistro/menu/items/`** - List menu items

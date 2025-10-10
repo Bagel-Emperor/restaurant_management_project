@@ -145,6 +145,14 @@ class Order(models.Model):
     user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='orders')
     customer = models.ForeignKey('Customer', null=True, blank=True, on_delete=models.SET_NULL, related_name='orders')
     status = models.ForeignKey('OrderStatus', null=False, on_delete=models.PROTECT, related_name='orders')
+    coupon = models.ForeignKey(
+        'Coupon',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='orders',
+        help_text="Optional coupon for discount on this order"
+    )
     total_amount = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -161,6 +169,56 @@ class Order(models.Model):
     # Custom model manager
     objects = OrderManager()
 
+    def clean(self):
+        """
+        Custom validation for Order model.
+        
+        Validates:
+        - Coupon cannot be changed on finalized orders (Completed/Cancelled)
+        - Coupon must be valid and usable when assigned
+        - Only one coupon per order (enforced by ForeignKey, but validated here)
+        """
+        super().clean()
+        
+        from .choices import OrderStatusChoices
+        
+        # If this is an existing order (has pk), check if coupon is being changed
+        if self.pk:
+            try:
+                old_order = Order.objects.get(pk=self.pk)
+                
+                # Prevent coupon changes on finalized orders
+                if old_order.status and old_order.status.name in [
+                    OrderStatusChoices.COMPLETED,
+                    OrderStatusChoices.CANCELLED
+                ]:
+                    if old_order.coupon != self.coupon:
+                        raise ValidationError({
+                            'coupon': f'Cannot change coupon on {old_order.status.name.lower()} orders.'
+                        })
+            except Order.DoesNotExist:
+                # New order, no validation needed for changes
+                pass
+        
+        # Validate coupon if one is assigned
+        if self.coupon:
+            # Check if coupon can be used (active, valid date range, usage limit)
+            if not self.coupon.can_be_used():
+                error_messages = []
+                
+                if not self.coupon.is_active:
+                    error_messages.append('Coupon is not active.')
+                
+                if not self.coupon.is_valid_on_date():
+                    error_messages.append('Coupon is expired or not yet valid.')
+                
+                if not self.coupon.is_usage_available():
+                    error_messages.append(f'Coupon has reached its maximum usage limit.')
+                
+                raise ValidationError({
+                    'coupon': ' '.join(error_messages)
+                })
+
     def save(self, *args, **kwargs):
         # Set default status if not provided
         if not self.status_id:
@@ -174,33 +232,60 @@ class Order(models.Model):
             from .utils import generate_order_number
             self.order_id = generate_order_number(model_class=Order)
         
+        # Run validation before saving
+        self.full_clean()
+        
         super().save(*args, **kwargs)
     
     def calculate_total(self):
         """
         Calculate the total cost of the order based on associated order items.
         
-        This method iterates through all OrderItem instances related to this order
-        and calculates the sum of (price * quantity) for each item.
+        This method calculates the order total in two steps:
+        1. Calculate the subtotal (sum of all item prices × quantities)
+        2. Apply any discount from an associated coupon
+        
+        The discount is calculated using the calculate_discount utility function,
+        which validates the coupon and applies the appropriate discount percentage.
         
         Returns:
-            Decimal: The total cost of all items in the order.
+            Decimal: The final total cost after applying any discount.
                     Returns 0 if no items are associated with the order.
         
         Example:
             >>> order = Order.objects.get(order_id='ORD-ABC123')
             >>> total = order.calculate_total()
             >>> print(f"Order total: ${total}")
+            
+            >>> # Order with coupon
+            >>> order.coupon = Coupon.objects.get(code='SAVE10')
+            >>> total = order.calculate_total()  # Applies 10% discount
+        
+        Notes:
+            - Uses select_related() to prevent N+1 queries
+            - Discount is only applied if coupon is valid and active
+            - Returns subtotal if no coupon is applied
+            - Final total is quantized to 2 decimal places (cent precision)
         """
-        # Use select_related() to prevent N+1 queries if menu_item fields are accessed
-        # and only fetch the fields we need for calculation
-        total = Decimal('0.00')
+        from .utils import calculate_discount
+        
+        # Calculate subtotal from all order items
+        subtotal = Decimal('0.00')
         
         for item in self.order_items.select_related('menu_item'):
             item_total = item.price * item.quantity
-            total += item_total
+            subtotal += item_total
         
-        return total
+        # Apply discount if coupon is present
+        discount_amount = calculate_discount(subtotal, self.coupon)
+        
+        # Calculate final total
+        final_total = subtotal - discount_amount
+        
+        # Ensure total is never negative (shouldn't happen with proper validation)
+        final_total = max(final_total, Decimal('0.00'))
+        
+        return final_total
     
     def __str__(self):
         order_display = self.order_id if self.order_id else f"#{self.id}"

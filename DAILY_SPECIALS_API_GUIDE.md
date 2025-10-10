@@ -115,18 +115,30 @@ assert 'results' in data
 
 ## Testing
 
-A comprehensive test script is available at `test_daily_specials.py` in the project root. Run it with:
+A comprehensive Django TestCase suite is available at `home/tests/test_daily_specials.py`. Run it with:
 
 ```bash
-python test_daily_specials.py
+# Run daily specials tests
+python manage.py test home.tests.test_daily_specials
+
+# Run with verbose output
+python manage.py test home.tests.test_daily_specials -v 2
+
+# Run all home app tests
+python manage.py test home
 ```
 
-The test script validates:
+The test suite validates:
 - ✅ API endpoint returns 200 OK
 - ✅ Response contains only daily specials that are available
 - ✅ Response format matches DailySpecialSerializer
-- ✅ All returned items have correct flags
+- ✅ All returned items have correct database flags
 - ✅ API endpoint is publicly accessible
+- ✅ Computed fields (category_name, restaurant_name) are present
+- ✅ Unavailable specials are properly filtered out
+- ✅ Non-special items are properly filtered out
+
+**Test Isolation:** The test suite uses Django's TestCase class with automatic database transactions, ensuring each test runs in isolation without side effects on existing database records.
 
 ## Implementation Details
 

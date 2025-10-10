@@ -1,4 +1,15 @@
 """
+DEPRECATED: This standalone test script is kept for backwards compatibility.
+
+⚠️ For proper test isolation and best practices, use the Django TestCase-based tests:
+   python manage.py test home.tests.test_daily_specials
+
+This script modifies existing database records, which can cause side effects.
+The new test suite (home/tests/test_daily_specials.py) uses Django's TestCase
+with proper database transactions to ensure test isolation.
+
+---
+
 Test script for Daily Specials API endpoint.
 
 This script tests:
@@ -7,6 +18,9 @@ This script tests:
 3. Availability filtering (only is_available=True items)
 4. Response format matches DailySpecialSerializer
 5. Empty results when no daily specials exist
+
+⚠️ WARNING: This script modifies existing database records.
+   Use the proper Django test suite for isolated testing.
 """
 
 import os

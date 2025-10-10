@@ -152,7 +152,11 @@ print("=" * 80)
 order4 = Order.objects.create(status=pending_status, total_amount=Decimal('0.00'))
 OrderItem.objects.create(order=order4, menu_item=menu_item1, quantity=2, price=Decimal('10.00'))
 OrderItem.objects.create(order=order4, menu_item=menu_item2, quantity=1, price=Decimal('5.00'))
-# Manually set expired coupon using QuerySet update to bypass validation
+# NOTE: Using QuerySet.update() to bypass validation is intentional here.
+# We need to test that calculate_total() correctly handles invalid coupons
+# that might exist in the database (e.g., coupons that expired after assignment).
+# This simulates a real-world scenario where a coupon becomes invalid after
+# being assigned to an order, ensuring our discount logic handles it gracefully.
 Order.objects.filter(pk=order4.pk).update(coupon=expired_coupon)
 order4.refresh_from_db()
 total4 = order4.calculate_total()
@@ -172,7 +176,7 @@ print("=" * 80)
 order5 = Order.objects.create(status=pending_status, total_amount=Decimal('0.00'))
 OrderItem.objects.create(order=order5, menu_item=menu_item1, quantity=2, price=Decimal('10.00'))
 OrderItem.objects.create(order=order5, menu_item=menu_item2, quantity=1, price=Decimal('5.00'))
-# Manually set inactive coupon using QuerySet update to bypass validation
+# NOTE: Using QuerySet.update() to bypass validation (see TEST 4 comment above)
 Order.objects.filter(pk=order5.pk).update(coupon=inactive_coupon)
 order5.refresh_from_db()
 total5 = order5.calculate_total()
@@ -192,7 +196,7 @@ print("=" * 80)
 order6 = Order.objects.create(status=pending_status, total_amount=Decimal('0.00'))
 OrderItem.objects.create(order=order6, menu_item=menu_item1, quantity=2, price=Decimal('10.00'))
 OrderItem.objects.create(order=order6, menu_item=menu_item2, quantity=1, price=Decimal('5.00'))
-# Manually set maxed out coupon using QuerySet update to bypass validation
+# NOTE: Using QuerySet.update() to bypass validation (see TEST 4 comment above)
 Order.objects.filter(pk=order6.pk).update(coupon=maxed_coupon)
 order6.refresh_from_db()
 total6 = order6.calculate_total()

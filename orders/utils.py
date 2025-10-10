@@ -36,10 +36,13 @@ def calculate_discount(subtotal, coupon):
     Example:
         >>> from decimal import Decimal
         >>> from orders.models import Coupon
-        >>> coupon = Coupon.objects.get(code='SAVE10')  # 10% discount
-        >>> calculate_discount(Decimal('100.00'), coupon)
+        >>> # Assuming a coupon with 10% discount exists
+        >>> coupon = Coupon.objects.filter(is_active=True).first()
+        >>> if coupon:
+        ...     calculate_discount(Decimal('100.00'), coupon)
         Decimal('10.00')
         
+        >>> # No coupon returns zero discount
         >>> calculate_discount(Decimal('100.00'), None)
         Decimal('0.00')
     

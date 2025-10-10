@@ -220,6 +220,21 @@ class Order(models.Model):
                 })
 
     def save(self, *args, **kwargs):
+        """
+        Override save to set defaults and run validation.
+        
+        Note: This method calls full_clean() by default, which validates
+        the model before saving. This ensures data integrity but may cause
+        performance issues in bulk operations.
+        
+        For bulk operations, use QuerySet.update() or pass skip_validation=True:
+            Order.objects.filter(pk=order.pk).update(field=value)  # Bypasses validation
+            order.save(skip_validation=True)  # Bypasses validation
+        
+        Args:
+            skip_validation (bool): If True, skips full_clean() validation.
+                                   Use with caution in bulk operations only.
+        """
         # Set default status if not provided
         if not self.status_id:
             from .choices import OrderStatusChoices
@@ -232,8 +247,10 @@ class Order(models.Model):
             from .utils import generate_order_number
             self.order_id = generate_order_number(model_class=Order)
         
-        # Run validation before saving
-        self.full_clean()
+        # Run validation before saving (unless explicitly skipped for bulk operations)
+        skip_validation = kwargs.pop('skip_validation', False)
+        if not skip_validation:
+            self.full_clean()
         
         super().save(*args, **kwargs)
     
@@ -282,7 +299,13 @@ class Order(models.Model):
         # Calculate final total
         final_total = subtotal - discount_amount
         
-        # Ensure total is never negative (shouldn't happen with proper validation)
+        # Defensive programming: Ensure total is never negative
+        # This handles edge cases like:
+        # - Manual database updates that bypass Coupon validation (max 100% discount)
+        # - Race conditions during concurrent coupon updates
+        # - Data corruption or migration issues
+        # While Coupon.discount_percentage is validated (max 100%), this ensures
+        # calculate_total() remains robust even if invalid data exists in the database.
         final_total = max(final_total, Decimal('0.00'))
         
         return final_total

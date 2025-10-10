@@ -12,7 +12,7 @@ from django.db.models import Q
 import logging
 from .forms import FeedbackForm, ContactSubmissionForm
 from .models import Restaurant, MenuItem, MenuCategory, Cart, CartItem, ContactSubmission, Table
-from .serializers import RestaurantSerializer, MenuItemSerializer, MenuCategorySerializer, ContactSubmissionSerializer, TableSerializer
+from .serializers import RestaurantSerializer, MenuItemSerializer, MenuCategorySerializer, ContactSubmissionSerializer, TableSerializer, DailySpecialSerializer
 
 # Email configuration constants
 DEFAULT_RESTAURANT_EMAIL = 'contact@perpexbistro.com'
@@ -31,6 +31,57 @@ logger = logging.getLogger(__name__)
 class MenuCategoryListAPIView(ListAPIView):
     queryset = MenuCategory.objects.all()
     serializer_class = MenuCategorySerializer
+
+
+class DailySpecialsAPIView(ListAPIView):
+    """
+    API endpoint to retrieve daily specials from the restaurant.
+    
+    Returns a list of menu items that are marked as daily specials and are currently available.
+    Uses the DailySpecialSerializer to format the response with essential information
+    for displaying featured items.
+    
+    - Public endpoint (no authentication required)
+    - Filters for items where is_daily_special=True and is_available=True
+    - Orders by creation date (newest first)
+    - Returns only available daily specials
+    
+    Response Fields:
+    - id: Menu item unique identifier
+    - name: Item name
+    - description: Item description
+    - price: Item price
+    - category_name: Category name for display
+    - restaurant_name: Restaurant name for display
+    - image: Item image URL (if available)
+    - is_available: Availability status
+    
+    Example Response:
+    [
+        {
+            "id": 1,
+            "name": "Grilled Salmon Special",
+            "description": "Fresh Atlantic salmon with seasonal vegetables",
+            "price": "24.99",
+            "category_name": "Main Course",
+            "restaurant_name": "Perpex Bistro",
+            "image": "/media/menu_images/salmon.jpg",
+            "is_available": true
+        }
+    ]
+    """
+    serializer_class = DailySpecialSerializer
+    permission_classes = [permissions.AllowAny]  # Public endpoint
+    
+    def get_queryset(self):
+        """
+        Filter menu items to return only daily specials that are available.
+        Uses select_related to optimize database queries for category and restaurant.
+        """
+        return MenuItem.objects.filter(
+            is_daily_special=True,
+            is_available=True
+        ).select_related('category', 'restaurant').order_by('-created_at')
 
 
 class MenuItemViewSet(viewsets.ModelViewSet):

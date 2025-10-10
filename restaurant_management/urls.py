@@ -23,6 +23,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+from home.views import DailySpecialsAPIView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -34,6 +35,9 @@ urlpatterns = [
     # JWT Authentication endpoints
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    
+    # API endpoint for daily specials (at root level for clean API URLs)
+    path('api/daily-specials/', DailySpecialsAPIView.as_view(), name='daily-specials-api'),
 ]
 
 # Custom 404 error handler

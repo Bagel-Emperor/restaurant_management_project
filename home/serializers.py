@@ -191,3 +191,40 @@ class TableSerializer(serializers.ModelSerializer):
         # unique_together constraint, which provides proper database-level validation
         # and better error handling than duplicate serializer validation
         return data
+
+
+class DailySpecialSerializer(serializers.ModelSerializer):
+    """
+    Serializer for daily specials menu items.
+    Returns only essential information for displaying featured daily specials.
+    Includes category name for better presentation.
+    """
+    category_name = serializers.SerializerMethodField()
+    restaurant_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = MenuItem
+        fields = [
+            'id',
+            'name',
+            'description',
+            'price',
+            'category_name',
+            'restaurant_name',
+            'image',
+            'is_available',
+        ]
+    
+    def get_category_name(self, obj):
+        """
+        Get the category name for display.
+        Returns None if no category is assigned.
+        """
+        return obj.category.name if obj.category else None
+    
+    def get_restaurant_name(self, obj):
+        """
+        Get the restaurant name for display.
+        Useful for multi-restaurant systems.
+        """
+        return obj.restaurant.name if obj.restaurant else None

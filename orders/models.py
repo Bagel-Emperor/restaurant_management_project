@@ -26,6 +26,70 @@ class OrderManager(models.Manager):
     Provides convenience methods for retrieving orders based on their status.
     """
     
+    def get_by_status(self, status_name):
+        """
+        Returns a queryset containing orders with the specified status.
+        
+        Args:
+            status_name (str): The name of the status to filter by (e.g., 'Pending', 'Processing')
+        
+        Returns:
+            QuerySet: Orders with the specified status
+            
+        Example:
+            >>> pending_orders = Order.objects.get_by_status('Pending')
+            >>> processing_orders = Order.objects.get_by_status('Processing')
+        """
+        return self.filter(status__name=status_name)
+    
+    def get_pending(self):
+        """
+        Returns a queryset containing all pending orders.
+        
+        Returns:
+            QuerySet: Orders with 'Pending' status
+            
+        Example:
+            >>> pending = Order.objects.get_pending()
+        """
+        return self.get_by_status(OrderStatusChoices.PENDING)
+    
+    def get_processing(self):
+        """
+        Returns a queryset containing all processing orders.
+        
+        Returns:
+            QuerySet: Orders with 'Processing' status
+            
+        Example:
+            >>> processing = Order.objects.get_processing()
+        """
+        return self.get_by_status(OrderStatusChoices.PROCESSING)
+    
+    def get_completed(self):
+        """
+        Returns a queryset containing all completed orders.
+        
+        Returns:
+            QuerySet: Orders with 'Completed' status
+            
+        Example:
+            >>> completed = Order.objects.get_completed()
+        """
+        return self.get_by_status(OrderStatusChoices.COMPLETED)
+    
+    def get_cancelled(self):
+        """
+        Returns a queryset containing all cancelled orders.
+        
+        Returns:
+            QuerySet: Orders with 'Cancelled' status
+            
+        Example:
+            >>> cancelled = Order.objects.get_cancelled()
+        """
+        return self.get_by_status(OrderStatusChoices.CANCELLED)
+    
     def get_active_orders(self):
         """
         Returns a queryset containing only active orders.
@@ -33,9 +97,27 @@ class OrderManager(models.Manager):
         
         Returns:
             QuerySet: Orders with status 'pending' or 'processing'
+            
+        Example:
+            >>> active = Order.objects.get_active_orders()
         """
         return self.filter(
             status__name__in=[OrderStatusChoices.PENDING, OrderStatusChoices.PROCESSING]
+        )
+    
+    def get_finalized_orders(self):
+        """
+        Returns a queryset containing finalized orders (completed or cancelled).
+        These orders are in a terminal state and cannot be modified.
+        
+        Returns:
+            QuerySet: Orders with 'Completed' or 'Cancelled' status
+            
+        Example:
+            >>> finalized = Order.objects.get_finalized_orders()
+        """
+        return self.filter(
+            status__name__in=[OrderStatusChoices.COMPLETED, OrderStatusChoices.CANCELLED]
         )
 
 # UserProfile model extending Django User

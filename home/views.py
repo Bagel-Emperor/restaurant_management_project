@@ -12,7 +12,14 @@ from django.db.models import Q
 import logging
 from .forms import FeedbackForm, ContactSubmissionForm
 from .models import Restaurant, MenuItem, MenuCategory, Cart, CartItem, ContactSubmission, Table
-from .serializers import RestaurantSerializer, MenuItemSerializer, MenuCategorySerializer, ContactSubmissionSerializer, TableSerializer, DailySpecialSerializer
+from .serializers import (
+    RestaurantSerializer,
+    MenuItemSerializer,
+    MenuCategorySerializer,
+    ContactSubmissionSerializer,
+    TableSerializer,
+    DailySpecialSerializer,
+)
 
 # Email configuration constants
 DEFAULT_RESTAURANT_EMAIL = 'contact@perpexbistro.com'

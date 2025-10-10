@@ -852,7 +852,6 @@ class AcceptRideView(APIView):
 					}, status=status.HTTP_400_BAD_REQUEST)
 				
 				logger.info(f"Ride #{ride_id} accepted by driver {driver.user.username}")
-				
 			
 			# Return updated ride details
 			serializer = RideSerializer(ride)

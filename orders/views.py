@@ -8,6 +8,7 @@ from rest_framework.decorators import action
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from decimal import Decimal
 from .models import Order, Customer, UserProfile, OrderStatus, Rider, Driver, Ride
 from .serializers import OrderSerializer, CustomerSerializer, OrderHistorySerializer, UserProfileSerializer, OrderDetailSerializer, RideSerializer, RideRequestSerializer
 from .choices import OrderStatusChoices
@@ -852,16 +853,16 @@ class AcceptRideView(APIView):
 					}, status=status.HTTP_400_BAD_REQUEST)
 				
 				logger.info(f"Ride #{ride_id} accepted by driver {driver.user.username}")
-				
-				# Return updated ride details
-				serializer = RideSerializer(ride)
-				
-				return Response({
-					'success': True,
-					'message': 'Ride accepted successfully',
-					'ride': serializer.data
-				}, status=status.HTTP_200_OK)
 			
+			# Return updated ride details
+			serializer = RideSerializer(ride)
+			
+			return Response({
+				'success': True,
+				'message': 'Ride accepted successfully',
+				'ride': serializer.data
+			}, status=status.HTTP_200_OK)
+		
 		except Exception as e:
 			logger.error(f"Error accepting ride #{ride_id}: {str(e)}", exc_info=True)
 			return Response({
@@ -869,3 +870,453 @@ class AcceptRideView(APIView):
 				'message': 'An unexpected error occurred while accepting the ride',
 				'error_code': 'INTERNAL_ERROR'
 			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ============================================================================
+# TASK 6: Real-Time Location Tracking
+# ============================================================================
+
+class UpdateLocationView(APIView):
+	"""
+	POST /api/ride/update-location/
+	
+	Allows authenticated drivers to update their current GPS location.
+	This simulates real-time tracking where driver apps send coordinates
+	every few seconds during an active ride.
+	"""
+	permission_classes = [permissions.IsAuthenticated]
+	
+	def post(self, request):
+		"""Update driver's current location."""
+		try:
+			# Verify user has a driver profile
+			try:
+				driver = request.user.driver_profile
+			except AttributeError:
+				logger.warning(f"User {request.user.username} attempted to update location without driver profile")
+				return Response({
+					'success': False,
+					'message': 'User does not have a driver profile',
+					'error_code': 'NO_DRIVER_PROFILE'
+				}, status=status.HTTP_403_FORBIDDEN)
+			
+			# Validate required fields
+			latitude = request.data.get('latitude')
+			longitude = request.data.get('longitude')
+			
+			if latitude is None or longitude is None:
+				return Response({
+					'success': False,
+					'message': 'Both latitude and longitude are required',
+					'error_code': 'MISSING_COORDINATES'
+				}, status=status.HTTP_400_BAD_REQUEST)
+			
+			# Validate coordinate ranges
+			try:
+				lat = Decimal(str(latitude))
+				lng = Decimal(str(longitude))
+				
+				if not (Decimal('-90') <= lat <= Decimal('90')):
+					return Response({
+						'success': False,
+						'message': 'Latitude must be between -90 and 90',
+						'error_code': 'INVALID_LATITUDE'
+					}, status=status.HTTP_400_BAD_REQUEST)
+				
+				if not (Decimal('-180') <= lng <= Decimal('180')):
+					return Response({
+						'success': False,
+						'message': 'Longitude must be between -180 and 180',
+						'error_code': 'INVALID_LONGITUDE'
+					}, status=status.HTTP_400_BAD_REQUEST)
+				
+			except (ValueError, TypeError):
+				return Response({
+					'success': False,
+					'message': 'Invalid coordinate format',
+					'error_code': 'INVALID_COORDINATES'
+				}, status=status.HTTP_400_BAD_REQUEST)
+			
+			# Update driver location
+			driver.current_latitude = lat
+			driver.current_longitude = lng
+			driver.save(update_fields=['current_latitude', 'current_longitude'])
+			
+			logger.info(f"Driver {driver.user.username} updated location to ({lat}, {lng})")
+			
+			return Response({
+				'success': True,
+				'message': 'Location updated successfully',
+				'latitude': str(lat),
+				'longitude': str(lng)
+			}, status=status.HTTP_200_OK)
+			
+		except Exception as e:
+			logger.error(f"Error updating driver location: {str(e)}", exc_info=True)
+			return Response({
+				'success': False,
+				'message': 'An unexpected error occurred while updating location',
+				'error_code': 'INTERNAL_ERROR'
+			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class TrackRideView(APIView):
+	"""
+	GET /api/ride/track/<ride_id>/
+	
+	Allows riders to track their driver's current location during an ONGOING ride.
+	Returns the driver's latest GPS coordinates for map display.
+	"""
+	permission_classes = [permissions.IsAuthenticated]
+	
+	def get(self, request, ride_id):
+		"""Get driver's current location for a specific ride."""
+		try:
+			# Get the ride
+			try:
+				ride = Ride.objects.select_related('rider', 'driver').get(pk=ride_id)
+			except Ride.DoesNotExist:
+				return Response({
+					'success': False,
+					'message': f'Ride with ID {ride_id} not found',
+					'error_code': 'RIDE_NOT_FOUND'
+				}, status=status.HTTP_404_NOT_FOUND)
+			
+			# Verify user is the rider for this ride
+			try:
+				rider = request.user.rider_profile
+				if ride.rider.id != rider.id:
+					logger.warning(f"Rider {rider.user.username} attempted to track ride #{ride_id} belonging to another rider")
+					return Response({
+						'success': False,
+						'message': 'You can only track your own rides',
+						'error_code': 'PERMISSION_DENIED'
+					}, status=status.HTTP_403_FORBIDDEN)
+			except AttributeError:
+				logger.warning(f"User {request.user.username} attempted to track ride without rider profile")
+				return Response({
+					'success': False,
+					'message': 'User does not have a rider profile',
+					'error_code': 'NO_RIDER_PROFILE'
+				}, status=status.HTTP_403_FORBIDDEN)
+			
+			# Check ride status - only allow tracking for ONGOING rides
+			if ride.status != Ride.STATUS_ONGOING:
+				return Response({
+					'success': False,
+					'message': f'Cannot track ride with status: {ride.get_status_display()}',
+					'error_code': 'INVALID_RIDE_STATUS',
+					'current_status': ride.status
+				}, status=status.HTTP_400_BAD_REQUEST)
+			
+			# Check if driver has location data
+			if ride.driver is None:
+				return Response({
+					'success': False,
+					'message': 'Ride has no assigned driver',
+					'error_code': 'NO_DRIVER_ASSIGNED'
+				}, status=status.HTTP_400_BAD_REQUEST)
+			
+			if ride.driver.current_latitude is None or ride.driver.current_longitude is None:
+				return Response({
+					'success': False,
+					'message': 'Driver location not available',
+					'error_code': 'LOCATION_UNAVAILABLE'
+				}, status=status.HTTP_404_NOT_FOUND)
+			
+			# Return driver's current location
+			logger.info(f"Rider {rider.user.username} tracking driver {ride.driver.user.username} for ride #{ride_id}")
+			
+			return Response({
+				'success': True,
+				'ride_id': ride.id,
+				'driver_latitude': str(ride.driver.current_latitude),
+				'driver_longitude': str(ride.driver.current_longitude),
+				'driver_name': ride.driver.user.username,
+				'vehicle': f"{ride.driver.vehicle_color} {ride.driver.vehicle_make} {ride.driver.vehicle_model}",
+				'license_plate': ride.driver.license_plate
+			}, status=status.HTTP_200_OK)
+			
+		except Exception as e:
+			logger.error(f"Error tracking ride #{ride_id}: {str(e)}", exc_info=True)
+			return Response({
+				'success': False,
+				'message': 'An unexpected error occurred while tracking ride',
+				'error_code': 'INTERNAL_ERROR'
+			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ============================================================================
+# TASK 7: Complete & Cancel Ride Status Transitions
+# ============================================================================
+
+class CompleteRideView(APIView):
+	"""
+	POST /api/ride/complete/<ride_id>/
+	
+	Allows drivers to mark an ONGOING ride as COMPLETED.
+	Enforces strict validation: only assigned driver can complete,
+	and ride must be in ONGOING status.
+	"""
+	permission_classes = [permissions.IsAuthenticated]
+	
+	def post(self, request, ride_id):
+		"""Mark a ride as completed."""
+		try:
+			# Verify user has a driver profile
+			try:
+				driver = request.user.driver_profile
+			except AttributeError:
+				logger.warning(f"User {request.user.username} attempted to complete ride without driver profile")
+				return Response({
+					'success': False,
+					'message': 'User does not have a driver profile',
+					'error_code': 'NO_DRIVER_PROFILE'
+				}, status=status.HTTP_403_FORBIDDEN)
+			
+			# Get the ride
+			try:
+				ride = Ride.objects.select_related('driver', 'rider').get(pk=ride_id)
+			except Ride.DoesNotExist:
+				return Response({
+					'success': False,
+					'message': f'Ride with ID {ride_id} not found',
+					'error_code': 'RIDE_NOT_FOUND'
+				}, status=status.HTTP_404_NOT_FOUND)
+			
+			# Verify driver is assigned to this ride
+			if ride.driver is None or ride.driver.id != driver.id:
+				logger.warning(f"Driver {driver.user.username} attempted to complete ride #{ride_id} not assigned to them")
+				return Response({
+					'success': False,
+					'message': 'You can only complete rides assigned to you',
+					'error_code': 'PERMISSION_DENIED'
+				}, status=status.HTTP_403_FORBIDDEN)
+			
+			# Verify ride is in ONGOING status
+			if ride.status != Ride.STATUS_ONGOING:
+				return Response({
+					'success': False,
+					'message': f'Cannot complete ride with status: {ride.get_status_display()}',
+					'error_code': 'INVALID_STATUS',
+					'current_status': ride.status
+				}, status=status.HTTP_400_BAD_REQUEST)
+			
+			# Mark ride as completed
+			success = ride.complete_ride()
+			
+			if not success:
+				logger.error(f"Failed to complete ride #{ride_id}")
+				return Response({
+					'success': False,
+					'message': 'Failed to complete ride',
+					'error_code': 'COMPLETION_FAILED'
+				}, status=status.HTTP_400_BAD_REQUEST)
+			
+			logger.info(f"Ride #{ride_id} completed by driver {driver.user.username}")
+			
+			return Response({
+				'success': True,
+				'message': 'Ride marked as completed',
+				'ride_id': ride.id,
+				'status': ride.status
+			}, status=status.HTTP_200_OK)
+			
+		except Exception as e:
+			logger.error(f"Error completing ride #{ride_id}: {str(e)}", exc_info=True)
+			return Response({
+				'success': False,
+				'message': 'An unexpected error occurred while completing ride',
+				'error_code': 'INTERNAL_ERROR'
+			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class CancelRideView(APIView):
+	"""
+	POST /api/ride/cancel/<ride_id>/
+	
+	Allows riders to cancel a REQUESTED ride before it's accepted.
+	Once a ride is ONGOING or COMPLETED, it cannot be cancelled.
+	"""
+	permission_classes = [permissions.IsAuthenticated]
+	
+	def post(self, request, ride_id):
+		"""Cancel a ride request."""
+		try:
+			# Verify user has a rider profile
+			try:
+				rider = request.user.rider_profile
+			except AttributeError:
+				logger.warning(f"User {request.user.username} attempted to cancel ride without rider profile")
+				return Response({
+					'success': False,
+					'message': 'User does not have a rider profile',
+					'error_code': 'NO_RIDER_PROFILE'
+				}, status=status.HTTP_403_FORBIDDEN)
+			
+			# Get the ride
+			try:
+				ride = Ride.objects.select_related('rider', 'driver').get(pk=ride_id)
+			except Ride.DoesNotExist:
+				return Response({
+					'success': False,
+					'message': f'Ride with ID {ride_id} not found',
+					'error_code': 'RIDE_NOT_FOUND'
+				}, status=status.HTTP_404_NOT_FOUND)
+			
+			# Verify rider owns this ride
+			if ride.rider.id != rider.id:
+				logger.warning(f"Rider {rider.user.username} attempted to cancel ride #{ride_id} belonging to another rider")
+				return Response({
+					'success': False,
+					'message': 'You can only cancel your own rides',
+					'error_code': 'PERMISSION_DENIED'
+				}, status=status.HTTP_403_FORBIDDEN)
+			
+			# Verify ride is still in REQUESTED status
+			if ride.status != Ride.STATUS_REQUESTED:
+				return Response({
+					'success': False,
+					'message': 'Cannot cancel a ride that is already ongoing or completed',
+					'error_code': 'INVALID_STATUS',
+					'current_status': ride.status,
+					'status_display': ride.get_status_display()
+				}, status=status.HTTP_400_BAD_REQUEST)
+			
+			# Cancel the ride
+			success = ride.cancel_ride()
+			
+			if not success:
+				logger.error(f"Failed to cancel ride #{ride_id}")
+				return Response({
+					'success': False,
+					'message': 'Failed to cancel ride',
+					'error_code': 'CANCELLATION_FAILED'
+				}, status=status.HTTP_400_BAD_REQUEST)
+			
+			logger.info(f"Ride #{ride_id} cancelled by rider {rider.user.username}")
+			
+			return Response({
+				'success': True,
+				'message': 'Ride cancelled successfully',
+				'ride_id': ride.id,
+				'status': ride.status
+			}, status=status.HTTP_200_OK)
+			
+		except Exception as e:
+			logger.error(f"Error cancelling ride #{ride_id}: {str(e)}", exc_info=True)
+			return Response({
+				'success': False,
+				'message': 'An unexpected error occurred while cancelling ride',
+				'error_code': 'INTERNAL_ERROR'
+			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ============================================================================
+# TASK 8: Rider & Driver Ride History with Pagination
+# ============================================================================
+
+class RiderHistoryView(generics.ListAPIView):
+	"""
+	GET /api/rider/history/
+	
+	Returns paginated ride history for the authenticated rider.
+	Shows only COMPLETED and CANCELLED rides.
+	Automatically paginates with 10 rides per page (configured in settings).
+	"""
+	serializer_class = RideSerializer
+	permission_classes = [permissions.IsAuthenticated]
+	
+	def get_queryset(self):
+		"""Filter rides by authenticated rider, show only completed/cancelled."""
+		try:
+			rider = self.request.user.rider_profile
+		except AttributeError:
+			logger.warning(f"User {self.request.user.username} attempted to view rider history without rider profile")
+			return Ride.objects.none()
+		
+		# Return only completed or cancelled rides for this rider
+		queryset = Ride.objects.filter(
+			rider=rider,
+			status__in=[Ride.STATUS_COMPLETED, Ride.STATUS_CANCELLED]
+		).select_related('driver', 'driver__user').order_by('-requested_at')
+		
+		logger.info(f"Rider {rider.user.username} viewed ride history")
+		
+		return queryset
+	
+	def list(self, request, *args, **kwargs):
+		"""Override list to add success flag and handle no profile case."""
+		try:
+			rider = request.user.rider_profile
+		except AttributeError:
+			return Response({
+				'success': False,
+				'message': 'User does not have a rider profile',
+				'error_code': 'NO_RIDER_PROFILE'
+			}, status=status.HTTP_403_FORBIDDEN)
+		
+		# Call parent's list method for automatic pagination
+		response = super().list(request, *args, **kwargs)
+		
+		# Wrap response in success structure
+		return Response({
+			'success': True,
+			'count': response.data['count'],
+			'next': response.data['next'],
+			'previous': response.data['previous'],
+			'results': response.data['results']
+		}, status=status.HTTP_200_OK)
+
+
+class DriverHistoryView(generics.ListAPIView):
+	"""
+	GET /api/driver/history/
+	
+	Returns paginated ride history for the authenticated driver.
+	Shows only COMPLETED and CANCELLED rides.
+	Automatically paginates with 10 rides per page (configured in settings).
+	"""
+	serializer_class = RideSerializer
+	permission_classes = [permissions.IsAuthenticated]
+	
+	def get_queryset(self):
+		"""Filter rides by authenticated driver, show only completed/cancelled."""
+		try:
+			driver = self.request.user.driver_profile
+		except AttributeError:
+			logger.warning(f"User {self.request.user.username} attempted to view driver history without driver profile")
+			return Ride.objects.none()
+		
+		# Return only completed or cancelled rides for this driver
+		queryset = Ride.objects.filter(
+			driver=driver,
+			status__in=[Ride.STATUS_COMPLETED, Ride.STATUS_CANCELLED]
+		).select_related('rider', 'rider__user').order_by('-requested_at')
+		
+		logger.info(f"Driver {driver.user.username} viewed ride history")
+		
+		return queryset
+	
+	def list(self, request, *args, **kwargs):
+		"""Override list to add success flag and handle no profile case."""
+		try:
+			driver = request.user.driver_profile
+		except AttributeError:
+			return Response({
+				'success': False,
+				'message': 'User does not have a driver profile',
+				'error_code': 'NO_DRIVER_PROFILE'
+			}, status=status.HTTP_403_FORBIDDEN)
+		
+		# Call parent's list method for automatic pagination
+		response = super().list(request, *args, **kwargs)
+		
+		# Wrap response in success structure
+		return Response({
+			'success': True,
+			'count': response.data['count'],
+			'next': response.data['next'],
+			'previous': response.data['previous'],
+			'results': response.data['results']
+		}, status=status.HTTP_200_OK)

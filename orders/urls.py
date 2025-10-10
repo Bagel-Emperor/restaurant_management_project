@@ -13,7 +13,13 @@ from .views import (
     CouponValidationView,
     RideRequestView,
     AvailableRidesView,
-    AcceptRideView
+    AcceptRideView,
+    UpdateLocationView,
+    TrackRideView,
+    CompleteRideView,
+    CancelRideView,
+    RiderHistoryView,
+    DriverHistoryView
 )
 from .jwt_views import (
     CustomTokenObtainPairView,
@@ -46,6 +52,18 @@ urlpatterns = [
     path('ride/request/', RideRequestView.as_view(), name='ride-request'),
     path('ride/available/', AvailableRidesView.as_view(), name='available-rides'),
     path('ride/accept/<int:ride_id>/', AcceptRideView.as_view(), name='accept-ride'),
+    
+    # Task 6: Real-time location tracking
+    path('ride/update-location/', UpdateLocationView.as_view(), name='update-location'),
+    path('ride/track/<int:ride_id>/', TrackRideView.as_view(), name='track-ride'),
+    
+    # Task 7: Complete & cancel rides
+    path('ride/complete/<int:ride_id>/', CompleteRideView.as_view(), name='complete-ride'),
+    path('ride/cancel/<int:ride_id>/', CancelRideView.as_view(), name='cancel-ride'),
+    
+    # Task 8: Ride history with pagination
+    path('rider/history/', RiderHistoryView.as_view(), name='rider-history'),
+    path('driver/history/', DriverHistoryView.as_view(), name='driver-history'),
     
     # JWT Authentication endpoints (custom views with enhanced features)
     path('auth/login/', jwt_login, name='jwt-login'),

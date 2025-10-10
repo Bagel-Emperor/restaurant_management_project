@@ -273,13 +273,6 @@ def status_report_view(request):
     
     return render(request, 'reports/status_report.html', {'report': report})
 ```
-    """Kitchen view showing orders to prepare."""
-    orders_to_prepare = Order.objects.get_active_orders().order_by('created_at')
-    
-    return render(request, 'kitchen.html', {
-        'orders': orders_to_prepare
-    })
-```
 
 ### Performance Optimizations
 

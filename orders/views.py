@@ -8,6 +8,7 @@ from rest_framework.decorators import action
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from decimal import Decimal
 from .models import Order, Customer, UserProfile, OrderStatus, Rider, Driver, Ride
 from .serializers import OrderSerializer, CustomerSerializer, OrderHistorySerializer, UserProfileSerializer, OrderDetailSerializer, RideSerializer, RideRequestSerializer
 from .choices import OrderStatusChoices
@@ -912,7 +913,6 @@ class UpdateLocationView(APIView):
 			
 			# Validate coordinate ranges
 			try:
-				from decimal import Decimal
 				lat = Decimal(str(latitude))
 				lng = Decimal(str(longitude))
 				
@@ -1241,7 +1241,7 @@ class RiderHistoryView(generics.ListAPIView):
 			status__in=[Ride.STATUS_COMPLETED, Ride.STATUS_CANCELLED]
 		).select_related('driver', 'driver__user').order_by('-requested_at')
 		
-		logger.info(f"Rider {rider.user.username} viewed ride history ({queryset.count()} rides)")
+		logger.info(f"Rider {rider.user.username} viewed ride history")
 		
 		return queryset
 	
@@ -1294,7 +1294,7 @@ class DriverHistoryView(generics.ListAPIView):
 			status__in=[Ride.STATUS_COMPLETED, Ride.STATUS_CANCELLED]
 		).select_related('rider', 'rider__user').order_by('-requested_at')
 		
-		logger.info(f"Driver {driver.user.username} viewed ride history ({queryset.count()} rides)")
+		logger.info(f"Driver {driver.user.username} viewed ride history")
 		
 		return queryset
 	

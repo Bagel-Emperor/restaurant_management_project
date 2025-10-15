@@ -4,13 +4,19 @@ from rest_framework.response import Response
 from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.views import APIView
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from decimal import Decimal
 from .models import Order, Customer, UserProfile, OrderStatus, Rider, Driver, Ride
-from .serializers import OrderSerializer, CustomerSerializer, OrderHistorySerializer, UserProfileSerializer, OrderDetailSerializer, RideSerializer, RideRequestSerializer, UpdateOrderStatusSerializer
+from .serializers import (
+    OrderSerializer, CustomerSerializer, OrderHistorySerializer, 
+    UserProfileSerializer, OrderDetailSerializer, RideSerializer, 
+    RideRequestSerializer, UpdateOrderStatusSerializer,
+    FareCalculationSerializer, RidePaymentSerializer
+)
 from .choices import OrderStatusChoices
 import logging
 
@@ -1432,3 +1438,248 @@ class UpdateOrderStatusView(APIView):
 	def put(self, request, *args, **kwargs):
 		"""Handle PUT request to update order status."""
 		return self._update_order_status(request)
+
+
+# =============================================================================
+# RIDE FARE CALCULATION VIEWS (Task 10B)
+# =============================================================================
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def calculate_fare(request, ride_id):
+	"""
+	Calculate and store fare for a completed ride.
+	
+	This endpoint calculates the ride fare using the Haversine distance formula
+	and applies the fare calculation formula: base_fare + (distance × per_km_rate) × surge_multiplier
+	
+	Task 10B: Calculate & Store Ride Fare — View
+	
+	URL: POST /api/ride/calculate-fare/<ride_id>/
+	Authentication: JWT required
+	Authorization: Rider, Driver, or Admin only
+	
+	Request:
+		No body required (ride_id is in URL)
+	
+	Success Response (200 OK):
+		{
+			"fare": 162.45,
+			"message": "Fare calculated and saved."
+		}
+	
+	Error Responses:
+		404: Ride not found
+		400: Ride not completed yet
+		400: Fare already set
+		403: User not authorized to calculate fare for this ride
+	
+	Authorization:
+		- The rider who requested the ride
+		- The driver assigned to the ride
+		- Admin users (staff)
+	
+	Business Logic:
+		1. Validates ride exists
+		2. Checks ride is COMPLETED
+		3. Verifies user authorization (rider/driver/admin)
+		4. Checks fare not already calculated
+		5. Uses FareCalculationSerializer to calculate and save fare
+		6. Returns calculated fare
+	
+	Example:
+		>>> # Using curl
+		>>> curl -X POST http://localhost:8000/api/ride/calculate-fare/42/ \\
+		...      -H "Authorization: Bearer <jwt_token>"
+		
+		>>> # Using Python requests
+		>>> import requests
+		>>> response = requests.post(
+		...     'http://localhost:8000/api/ride/calculate-fare/42/',
+		...     headers={'Authorization': f'Bearer {jwt_token}'}
+		... )
+		>>> print(response.json())
+		{'fare': 162.45, 'message': 'Fare calculated and saved.'}
+	
+	Args:
+		request: Django REST framework request object
+		ride_id (int): ID of the ride to calculate fare for
+	
+	Returns:
+		Response: JSON response with fare or error message
+	"""
+	try:
+		ride = Ride.objects.get(id=ride_id)
+	except Ride.DoesNotExist:
+		logger.warning(f"Fare calculation attempted for non-existent ride {ride_id}")
+		return Response(
+			{"error": "Ride not found."},
+			status=status.HTTP_404_NOT_FOUND
+		)
+	
+	# Ride must be completed before fare calculation
+	if ride.status != Ride.STATUS_COMPLETED:
+		logger.info(f"Fare calculation attempted for incomplete ride {ride_id} (status: {ride.status})")
+		return Response(
+			{"error": "Ride must be completed before fare calculation."},
+			status=status.HTTP_400_BAD_REQUEST
+		)
+	
+	# Authorization check: Only rider, driver, or admin can calculate fare
+	user = request.user
+	is_driver = hasattr(user, "driver_profile") and ride.driver == user.driver_profile
+	is_rider = ride.rider == user.rider_profile if hasattr(user, "rider_profile") else False
+	is_admin = user.is_staff
+	
+	if not (is_driver or is_rider or is_admin):
+		logger.warning(
+			f"Unauthorized fare calculation attempt by user {user.username} for ride {ride_id}"
+		)
+		return Response(
+			{"error": "You are not authorized to calculate fare for this ride."},
+			status=status.HTTP_403_FORBIDDEN
+		)
+	
+	# Check if fare already set (prevent duplicate calculation)
+	if ride.fare is not None:
+		logger.info(f"Fare calculation attempted for ride {ride_id} but fare already set: ₹{ride.fare}")
+		return Response(
+			{"error": "Fare already set."},
+			status=status.HTTP_400_BAD_REQUEST
+		)
+	
+	# Use serializer to calculate and save fare
+	serializer = FareCalculationSerializer(instance=ride, data={})
+	serializer.is_valid(raise_exception=True)
+	
+	logger.info(
+		f"Fare calculated for ride {ride_id}: ₹{ride.fare} "
+		f"(surge: {ride.surge_multiplier}x) by user {user.username}"
+	)
+	
+	return Response({
+		"fare": ride.fare,
+		"message": "Fare calculated and saved."
+	}, status=status.HTTP_200_OK)
+
+
+# =============================================================================
+# RIDE PAYMENT VIEWS (Task 11B)
+# =============================================================================
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_ride_as_paid(request, ride_id):
+	"""
+	Mark a completed ride as paid and record payment details.
+	
+	This endpoint allows riders or drivers to mark a ride as paid after completion.
+	It records the payment method (CASH, UPI, or CARD) and timestamps the payment.
+	
+	Task 11B: Payment Flow — Create View to Mark Ride as Paid
+	
+	URL: POST /api/ride/payment/<ride_id>/
+	Authentication: JWT required
+	Authorization: Rider or Driver only (not admin for payment marking)
+	
+	Request Body:
+		{
+			"payment_method": "CASH",  // or "UPI" or "CARD"
+			"payment_status": "PAID"
+		}
+	
+	Success Response (200 OK):
+		{
+			"message": "Payment marked as complete.",
+			"status": "PAID",
+			"method": "CASH"
+		}
+	
+	Error Responses:
+		404: Ride not found
+		400: Ride is not completed yet
+		400: Ride is already marked as paid
+		403: User not authorized to mark payment
+	
+	Authorization:
+		- The rider who requested the ride
+		- The driver assigned to the ride
+		- NOT admin (admins should not mark payments on behalf of users)
+	
+	Business Logic:
+		1. Validates ride exists
+		2. Checks user is rider or driver (ownership)
+		3. Uses RidePaymentSerializer to validate and update payment
+		4. Records payment_method, payment_status, and paid_at timestamp
+		5. Prevents modification if already paid
+	
+	Example:
+		>>> # Driver marks ride as paid with cash
+		>>> curl -X POST http://localhost:8000/api/ride/payment/42/ \\
+		...      -H "Authorization: Bearer <jwt_token>" \\
+		...      -H "Content-Type: application/json" \\
+		...      -d '{"payment_method": "CASH", "payment_status": "PAID"}'
+		
+		>>> # Using Python requests
+		>>> import requests
+		>>> response = requests.post(
+		...     'http://localhost:8000/api/ride/payment/42/',
+		...     headers={
+		...         'Authorization': f'Bearer {jwt_token}',
+		...         'Content-Type': 'application/json'
+		...     },
+		...     json={'payment_method': 'UPI', 'payment_status': 'PAID'}
+		... )
+		>>> print(response.json())
+		{'message': 'Payment marked as complete.', 'status': 'PAID', 'method': 'UPI'}
+	
+	Args:
+		request: Django REST framework request object with payment data
+		ride_id (int): ID of the ride to mark as paid
+	
+	Returns:
+		Response: JSON response with payment confirmation or error message
+	"""
+	try:
+		ride = Ride.objects.get(id=ride_id)
+	except Ride.DoesNotExist:
+		logger.warning(f"Payment marking attempted for non-existent ride {ride_id}")
+		return Response(
+			{"error": "Ride not found."},
+			status=status.HTTP_404_NOT_FOUND
+		)
+	
+	# Authorization check: Only rider or driver can mark as paid
+	user = request.user
+	is_driver = hasattr(user, "driver_profile") and ride.driver == user.driver_profile
+	is_rider = ride.rider == user.rider_profile if hasattr(user, "rider_profile") else False
+	
+	if not (is_driver or is_rider):
+		logger.warning(
+			f"Unauthorized payment marking attempt by user {user.username} for ride {ride_id}"
+		)
+		return Response(
+			{"error": "You are not authorized to mark this ride as paid."},
+			status=status.HTTP_403_FORBIDDEN
+		)
+	
+	# Use serializer to validate and update payment information
+	serializer = RidePaymentSerializer(instance=ride, data=request.data)
+	
+	if serializer.is_valid():
+		serializer.save()
+		
+		logger.info(
+			f"Ride {ride_id} marked as {ride.payment_status} via {ride.payment_method} "
+			f"by user {user.username} at {ride.paid_at}"
+		)
+		
+		return Response({
+			"message": "Payment marked as complete.",
+			"status": ride.payment_status,
+			"method": ride.payment_method
+		}, status=status.HTTP_200_OK)
+	
+	# Return validation errors
+	logger.info(f"Invalid payment data for ride {ride_id}: {serializer.errors}")
+	return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -20,7 +20,10 @@ from .views import (
     CancelRideView,
     RiderHistoryView,
     DriverHistoryView,
-    UpdateOrderStatusView
+    UpdateOrderStatusView,
+    # Task 10B & 11B: Fare calculation and payment views
+    calculate_fare,
+    mark_ride_as_paid
 )
 from .jwt_views import (
     CustomTokenObtainPairView,
@@ -66,6 +69,12 @@ urlpatterns = [
     # Task 8: Ride history with pagination
     path('rider/history/', RiderHistoryView.as_view(), name='rider-history'),
     path('driver/history/', DriverHistoryView.as_view(), name='driver-history'),
+    
+    # Task 10B: Calculate and store ride fare
+    path('ride/calculate-fare/<int:ride_id>/', calculate_fare, name='calculate-fare'),
+    
+    # Task 11B: Mark ride as paid
+    path('ride/payment/<int:ride_id>/', mark_ride_as_paid, name='mark-ride-paid'),
     
     # JWT Authentication endpoints (custom views with enhanced features)
     path('auth/login/', jwt_login, name='jwt-login'),

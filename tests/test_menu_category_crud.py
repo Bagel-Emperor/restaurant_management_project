@@ -1,0 +1,158 @@
+"""
+Test suite for Menu Category CRUD API operations.
+Tests the full CRUD functionality of MenuCategoryViewSet.
+"""
+from django.test import TestCase
+from django.urls import reverse
+from rest_framework.test import APIClient
+from rest_framework import status
+from home.models import MenuCategory
+
+
+class MenuCategoryCRUDTestCase(TestCase):
+    """Test cases for Menu Category CRUD operations."""
+    
+    def setUp(self):
+        """Set up test client and create test data."""
+        self.client = APIClient()
+        self.list_url = reverse('menucategory-list')
+        
+        # Clear any existing categories to ensure clean test environment
+        MenuCategory.objects.all().delete()
+        
+        # Create test categories
+        self.category1 = MenuCategory.objects.create(name="Appetizers")
+        self.category2 = MenuCategory.objects.create(name="Main Courses")
+        self.category3 = MenuCategory.objects.create(name="Desserts")
+    
+    def test_list_categories(self):
+        """Test listing all menu categories (ordered by name)."""
+        response = self.client.get(self.list_url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Response might be paginated (dict with 'results') or a list
+        if isinstance(response.data, dict) and 'results' in response.data:
+            # Paginated response
+            categories = response.data['results']
+            self.assertEqual(response.data['count'], 3)
+        else:
+            # Direct list response
+            categories = response.data
+        
+        # At least 3 categories should exist (from setUp)
+        self.assertEqual(len(categories), 3)
+        
+        # Find our test categories in the response
+        category_names = [cat['name'] for cat in categories]
+        self.assertIn("Appetizers", category_names)
+        self.assertIn("Desserts", category_names)
+        self.assertIn("Main Courses", category_names)
+        
+        # Check ordering (alphabetical by name)
+        # Verify that categories are in alphabetical order
+        sorted_names = sorted(category_names)
+        self.assertEqual(category_names, sorted_names)
+    
+    def test_retrieve_category(self):
+        """Test retrieving a single menu category."""
+        detail_url = reverse('menucategory-detail', kwargs={'pk': self.category1.pk})
+        response = self.client.get(detail_url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], self.category1.id)
+        self.assertEqual(response.data['name'], "Appetizers")
+    
+    def test_create_category(self):
+        """Test creating a new menu category."""
+        data = {'name': 'Beverages'}
+        response = self.client.post(self.list_url, data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['name'], 'Beverages')
+        
+        # Verify it was created in the database
+        self.assertTrue(MenuCategory.objects.filter(name='Beverages').exists())
+        self.assertEqual(MenuCategory.objects.count(), 4)
+    
+    def test_create_duplicate_category(self):
+        """Test that duplicate category names are rejected."""
+        data = {'name': 'Appetizers'}  # Already exists
+        response = self.client.post(self.list_url, data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # Should still have only 3 categories
+        self.assertEqual(MenuCategory.objects.count(), 3)
+    
+    def test_update_category_put(self):
+        """Test updating a category with PUT (full update)."""
+        detail_url = reverse('menucategory-detail', kwargs={'pk': self.category1.pk})
+        data = {'name': 'Starters'}
+        response = self.client.put(detail_url, data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['name'], 'Starters')
+        
+        # Verify database update
+        self.category1.refresh_from_db()
+        self.assertEqual(self.category1.name, 'Starters')
+    
+    def test_update_category_patch(self):
+        """Test updating a category with PATCH (partial update)."""
+        detail_url = reverse('menucategory-detail', kwargs={'pk': self.category2.pk})
+        data = {'name': 'Entrees'}
+        response = self.client.patch(detail_url, data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['name'], 'Entrees')
+        
+        # Verify database update
+        self.category2.refresh_from_db()
+        self.assertEqual(self.category2.name, 'Entrees')
+    
+    def test_delete_category(self):
+        """Test deleting a menu category."""
+        detail_url = reverse('menucategory-detail', kwargs={'pk': self.category3.pk})
+        response = self.client.delete(detail_url)
+        
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        
+        # Verify it was deleted from database
+        self.assertFalse(MenuCategory.objects.filter(pk=self.category3.pk).exists())
+        self.assertEqual(MenuCategory.objects.count(), 2)
+    
+    def test_retrieve_nonexistent_category(self):
+        """Test retrieving a category that doesn't exist."""
+        detail_url = reverse('menucategory-detail', kwargs={'pk': 9999})
+        response = self.client.get(detail_url)
+        
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    
+    def test_update_nonexistent_category(self):
+        """Test updating a category that doesn't exist."""
+        detail_url = reverse('menucategory-detail', kwargs={'pk': 9999})
+        data = {'name': 'Nonexistent'}
+        response = self.client.put(detail_url, data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    
+    def test_delete_nonexistent_category(self):
+        """Test deleting a category that doesn't exist."""
+        detail_url = reverse('menucategory-detail', kwargs={'pk': 9999})
+        response = self.client.delete(detail_url)
+        
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    
+    def test_create_category_empty_name(self):
+        """Test that empty category name is rejected."""
+        data = {'name': ''}
+        response = self.client.post(self.list_url, data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    
+    def test_create_category_no_name(self):
+        """Test that missing category name is rejected."""
+        data = {}
+        response = self.client.post(self.list_url, data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

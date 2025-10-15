@@ -75,6 +75,7 @@ This repository contains the code for a comprehensive restaurant management and 
 - **[Order Manager Guide](ORDER_MANAGER_GUIDE.md)** - Custom order manager implementation
 - **[Order Total Calculation Guide](ORDER_TOTAL_CALCULATION_GUIDE.md)** - Order total with discount support
 - **[Menu Item API Guide](MENU_ITEM_API_GUIDE.md)** - Menu management APIs
+- **[Category API Guide](CATEGORY_API_GUIDE.md)** - Menu category CRUD operations
 - **[Daily Specials API Guide](DAILY_SPECIALS_API_GUIDE.md)** - Daily specials endpoint documentation
 - **[Shopping Cart Guide](SHOPPING_CART_GUIDE.md)** - Cart functionality documentation
 - **[Search API Guide](SEARCH_API_GUIDE.md)** - Search and filtering APIs
@@ -107,10 +108,18 @@ This repository contains the code for a comprehensive restaurant management and 
 - **`DELETE /PerpexBistro/orders/orders/<id>/cancel/`** - Cancel order
 
 #### Menu Management
-- **`GET /PerpexBistro/menu/items/`** - List menu items
-- **`GET /PerpexBistro/menu/categories/`** - List menu categories
+- **`GET /PerpexBistro/api/menu-items/`** - List menu items (with filtering)
+- **`POST /PerpexBistro/api/menu-items/`** - Create menu item
+- **`GET /PerpexBistro/api/menu-items/<id>/`** - Get menu item details
+- **`PUT/PATCH /PerpexBistro/api/menu-items/<id>/`** - Update menu item
+- **`DELETE /PerpexBistro/api/menu-items/<id>/`** - Delete menu item
+- **`GET /PerpexBistro/api/menu-categories/`** - List menu categories
+- **`POST /PerpexBistro/api/menu-categories/`** - Create category
+- **`GET /PerpexBistro/api/menu-categories/<id>/`** - Get category details
+- **`PUT/PATCH /PerpexBistro/api/menu-categories/<id>/`** - Update category
+- **`DELETE /PerpexBistro/api/menu-categories/<id>/`** - Delete category
 - **`GET /PerpexBistro/menu/search/`** - Search menu items
-- **`GET /api/daily-specials/`** - Get daily specials (public, no auth required)
+- **`GET /PerpexBistro/api/daily-specials/`** - Get daily specials (public, no auth required)
 
 ### User Order History
 Authenticated users can retrieve their order history with full details.

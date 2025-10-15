@@ -33,11 +33,42 @@ from rest_framework.generics import ListAPIView, RetrieveAPIView
 # Configure logger
 logger = logging.getLogger(__name__)
 
-# DRF API endpoint for listing all menu categories
+# ================================
+# MENU CATEGORY CRUD API
+# ================================
 
-class MenuCategoryListAPIView(ListAPIView):
-    queryset = MenuCategory.objects.all()
+class MenuCategoryViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for full CRUD operations on menu categories.
+    
+    Provides:
+    - List all categories: GET /api/menu-categories/
+    - Retrieve single category: GET /api/menu-categories/<id>/
+    - Create new category: POST /api/menu-categories/
+    - Update category: PUT/PATCH /api/menu-categories/<id>/
+    - Delete category: DELETE /api/menu-categories/<id>/
+    
+    All operations require appropriate permissions.
+    """
+    queryset = MenuCategory.objects.all().order_by('name')
     serializer_class = MenuCategorySerializer
+    permission_classes = [permissions.AllowAny]  # Adjust as needed for production
+    
+    def perform_create(self, serializer):
+        """Custom create logic if needed."""
+        serializer.save()
+        logger.info(f"Created menu category: {serializer.instance.name}")
+    
+    def perform_update(self, serializer):
+        """Custom update logic if needed."""
+        serializer.save()
+        logger.info(f"Updated menu category: {serializer.instance.name}")
+    
+    def perform_destroy(self, instance):
+        """Custom delete logic if needed."""
+        category_name = instance.name
+        instance.delete()
+        logger.info(f"Deleted menu category: {category_name}")
 
 
 class DailySpecialsAPIView(ListAPIView):

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
-from .models import Restaurant, MenuItem, MenuCategory, ContactSubmission, Table
+from .models import Restaurant, MenuItem, MenuCategory, ContactSubmission, Table, UserReview
 
 # Serializer for MenuCategory
 class MenuCategorySerializer(serializers.ModelSerializer):
@@ -228,3 +228,62 @@ class DailySpecialSerializer(serializers.ModelSerializer):
         Useful for multi-restaurant systems.
         """
         return obj.restaurant.name if obj.restaurant else None
+
+
+class UserReviewSerializer(serializers.ModelSerializer):
+    """
+    Serializer for UserReview model.
+    Handles creation and retrieval of user reviews for menu items.
+    """
+    user_username = serializers.CharField(source='user.username', read_only=True)
+    menu_item_name = serializers.CharField(source='menu_item.name', read_only=True)
+    
+    class Meta:
+        model = UserReview
+        fields = [
+            'id',
+            'user',
+            'user_username',
+            'menu_item',
+            'menu_item_name',
+            'rating',
+            'comment',
+            'review_date',
+        ]
+        read_only_fields = ['id', 'user', 'user_username', 'menu_item_name', 'review_date']
+    
+    def validate_rating(self, value):
+        """Validate rating is between 1 and 5"""
+        if value < 1 or value > 5:
+            raise serializers.ValidationError("Rating must be between 1 and 5")
+        return value
+    
+    def validate_comment(self, value):
+        """Validate comment is not empty or just whitespace"""
+        if not value or not value.strip():
+            raise serializers.ValidationError("Comment cannot be empty")
+        if len(value.strip()) < 10:
+            raise serializers.ValidationError("Comment must be at least 10 characters long")
+        return value.strip()
+    
+    def validate_menu_item(self, value):
+        """Validate menu item exists and is available"""
+        if not value.is_available:
+            raise serializers.ValidationError("Cannot review an unavailable menu item")
+        return value
+    
+    def validate(self, data):
+        """Validate that user hasn't already reviewed this menu item"""
+        # Get user from context (set in view)
+        user = self.context.get('request').user if self.context.get('request') else None
+        menu_item = data.get('menu_item')
+        
+        # Only check for duplicates on create (not update)
+        if not self.instance and user and menu_item:
+            if UserReview.objects.filter(user=user, menu_item=menu_item).exists():
+                raise serializers.ValidationError(
+                    "You have already reviewed this menu item. Please update your existing review instead."
+                )
+        
+        return data
+

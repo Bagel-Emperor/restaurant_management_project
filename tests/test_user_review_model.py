@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.db.utils import IntegrityError
 from home.models import UserReview, MenuItem, Restaurant, MenuCategory
 from decimal import Decimal
 
@@ -118,7 +119,7 @@ class UserReviewModelTest(TestCase):
 		)
 		
 		# Try to create second review for same user and menu item
-		with self.assertRaises(Exception):  # Will raise IntegrityError
+		with self.assertRaises(IntegrityError):
 			UserReview.objects.create(
 				user=self.user,
 				menu_item=self.menu_item,

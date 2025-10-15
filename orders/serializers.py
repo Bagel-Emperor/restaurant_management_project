@@ -992,6 +992,7 @@ class FareCalculationSerializer(serializers.ModelSerializer):
         ride.save(update_fields=['fare'])
         
         return data
+    
     def _validate_ride_state(self, ride):
         """
         Validate that ride is in a valid state for fare calculation.

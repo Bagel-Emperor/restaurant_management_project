@@ -1528,7 +1528,7 @@ def calculate_fare(request, ride_id):
 	# Authorization check: Only rider, driver, or admin can calculate fare
 	user = request.user
 	is_driver = hasattr(user, "driver_profile") and ride.driver == user.driver_profile
-	is_rider = ride.rider == user.rider_profile if hasattr(user, "rider_profile") else False
+	is_rider = hasattr(user, "rider_profile") and ride.rider == user.rider_profile
 	is_admin = user.is_staff
 	
 	if not (is_driver or is_rider or is_admin):
@@ -1652,7 +1652,7 @@ def mark_ride_as_paid(request, ride_id):
 	# Authorization check: Only rider or driver can mark as paid
 	user = request.user
 	is_driver = hasattr(user, "driver_profile") and ride.driver == user.driver_profile
-	is_rider = ride.rider == user.rider_profile if hasattr(user, "rider_profile") else False
+	is_rider = hasattr(user, "rider_profile") and ride.rider == user.rider_profile
 	
 	if not (is_driver or is_rider):
 		logger.warning(

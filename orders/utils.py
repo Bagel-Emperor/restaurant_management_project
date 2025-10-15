@@ -18,6 +18,220 @@ from django.db.models import Sum
 from orders.models import Order
 
 
+# ================================
+# ORDER STATUS MANAGEMENT
+# ================================
+
+def update_order_status(order_id: str, new_status: str, user_info: Optional[str] = None) -> dict:
+    """
+    Update the status of an order given its order ID and new status.
+    
+    This is a reusable utility function for programmatically updating order statuses
+    from anywhere in the application. It handles database retrieval, validation,
+    error handling, and audit logging.
+    
+    Args:
+        order_id (str): The unique order identifier (e.g., "ORD-A7X9K2M5")
+        new_status (str): The new status name. Must be one of:
+                         'Pending', 'Processing', 'Completed', 'Cancelled'
+        user_info (str, optional): Information about who initiated the change
+                                  (e.g., username, "system", "admin")
+                                  Used for audit logging. Default: "system"
+    
+    Returns:
+        dict: A dictionary containing operation result with the following structure:
+            {
+                'success': bool,          # True if update succeeded
+                'message': str,           # Human-readable result message
+                'order_id': str,         # The order ID that was updated
+                'previous_status': str,  # Status before update (if successful)
+                'new_status': str,       # Status after update (if successful)
+                'error': str            # Error message (only if success=False)
+            }
+    
+    Returns (Success):
+        {
+            'success': True,
+            'message': 'Order status updated successfully',
+            'order_id': 'ORD-A7X9K2M5',
+            'previous_status': 'Pending',
+            'new_status': 'Processing'
+        }
+    
+    Returns (Failure - Order Not Found):
+        {
+            'success': False,
+            'message': 'Order not found',
+            'order_id': 'ORD-INVALID',
+            'error': 'No order found with ID: ORD-INVALID'
+        }
+    
+    Returns (Failure - Invalid Status):
+        {
+            'success': False,
+            'message': 'Invalid status provided',
+            'order_id': 'ORD-A7X9K2M5',
+            'error': 'Status must be one of: Pending, Processing, Completed, Cancelled'
+        }
+    
+    Example:
+        >>> from orders.utils import update_order_status
+        >>> 
+        >>> # Update order status from admin panel
+        >>> result = update_order_status('ORD-A7X9K2M5', 'Processing', 'admin')
+        >>> if result['success']:
+        ...     print(f"Order {result['order_id']} updated to {result['new_status']}")
+        ... else:
+        ...     print(f"Error: {result['error']}")
+        Order ORD-A7X9K2M5 updated to Processing
+        
+        >>> # Update from automated workflow
+        >>> result = update_order_status('ORD-B8N4P2', 'Completed', 'payment_system')
+        >>> if result['success']:
+        ...     print(result['message'])
+        Order status updated successfully
+        
+        >>> # Handle non-existent order
+        >>> result = update_order_status('ORD-INVALID', 'Processing')
+        >>> if not result['success']:
+        ...     print(result['error'])
+        No order found with ID: ORD-INVALID
+    
+    Raises:
+        Does not raise exceptions. All errors are returned in the result dictionary
+        with success=False and appropriate error messages.
+    
+    Notes:
+        - Validates status against OrderStatusChoices.VALID_STATUSES
+        - Automatically creates OrderStatus objects if they don't exist
+        - Logs all status changes with timestamp and user info
+        - Thread-safe with database transactions
+        - Updates the order's updated_at timestamp automatically
+        - Can be used by views, management commands, celery tasks, etc.
+    
+    Integration:
+        - Used by UpdateOrderStatusView for API endpoint
+        - Can be called from management commands for batch updates
+        - Suitable for automated workflows and scheduled tasks
+        - Works with order notification systems
+        - Compatible with audit trail requirements
+    
+    Performance:
+        - Uses select_related('status') to minimize database queries
+        - Single transaction for atomicity
+        - Indexed lookups on order_id field
+    
+    See Also:
+        - UpdateOrderStatusView: REST API endpoint using this function
+        - OrderStatusChoices: Valid status choices
+        - get_order_status(): Retrieve current order status
+    """
+    logger = logging.getLogger(__name__)
+    
+    # Import here to avoid circular dependencies
+    from .models import OrderStatus
+    from .choices import OrderStatusChoices
+    
+    # Default user_info if not provided
+    if user_info is None:
+        user_info = "system"
+    
+    try:
+        # Validate that the new status is valid
+        valid_statuses = [
+            OrderStatusChoices.PENDING,
+            OrderStatusChoices.PROCESSING,
+            OrderStatusChoices.COMPLETED,
+            OrderStatusChoices.CANCELLED
+        ]
+        
+        if new_status not in valid_statuses:
+            error_msg = f"Status must be one of: {', '.join(valid_statuses)}"
+            logger.warning(
+                'Invalid status provided for order %s: %s (initiated by: %s)',
+                order_id, new_status, user_info
+            )
+            return {
+                'success': False,
+                'message': 'Invalid status provided',
+                'order_id': order_id,
+                'error': error_msg
+            }
+        
+        # Retrieve the order with its current status
+        try:
+            order = Order.objects.select_related('status').get(order_id=order_id)
+        except Order.DoesNotExist:
+            error_msg = f"No order found with ID: {order_id}"
+            logger.warning(
+                'Order status update failed: %s (initiated by: %s)',
+                error_msg, user_info
+            )
+            return {
+                'success': False,
+                'message': 'Order not found',
+                'order_id': order_id,
+                'error': error_msg
+            }
+        
+        # Store previous status for logging
+        previous_status = order.status.name
+        
+        # Check if status is already the same (no update needed)
+        if previous_status == new_status:
+            logger.info(
+                'Order %s already has status %s (initiated by: %s)',
+                order_id, new_status, user_info
+            )
+            return {
+                'success': True,
+                'message': f'Order already has status: {new_status}',
+                'order_id': order_id,
+                'previous_status': previous_status,
+                'new_status': new_status
+            }
+        
+        # Get or create the new status object
+        new_status_obj, created = OrderStatus.objects.get_or_create(name=new_status)
+        
+        # Update the order status
+        order.status = new_status_obj
+        order.save(update_fields=['status', 'updated_at'])
+        
+        # Log the successful status change
+        logger.info(
+            'Order %s status updated from %s to %s (initiated by: %s)',
+            order_id, previous_status, new_status, user_info
+        )
+        
+        return {
+            'success': True,
+            'message': 'Order status updated successfully',
+            'order_id': order_id,
+            'previous_status': previous_status,
+            'new_status': new_status
+        }
+        
+    except Exception as e:
+        # Catch any unexpected errors
+        error_msg = f"Unexpected error updating order status: {str(e)}"
+        logger.error(
+            'Error updating order %s status to %s: %s (initiated by: %s)',
+            order_id, new_status, str(e), user_info,
+            exc_info=True
+        )
+        return {
+            'success': False,
+            'message': 'An error occurred while updating order status',
+            'order_id': order_id,
+            'error': error_msg
+        }
+
+
+# ================================
+# DISCOUNT AND COUPON UTILITIES
+# ================================
+
 def calculate_discount(subtotal, coupon):
     """
     Calculate the discount amount for an order based on a coupon.

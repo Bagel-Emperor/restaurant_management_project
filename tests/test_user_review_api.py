@@ -233,7 +233,7 @@ class UserReviewAPITest(TestCase):
         
         data = {
             'rating': 1,
-            'comment': 'Trying to sabotage someone elses review'
+            'comment': 'Trying to sabotage someone else\'s review'
         }
         
         response = self.client.patch(f'/PerpexBistro/api/reviews/{self.existing_review.id}/', data)

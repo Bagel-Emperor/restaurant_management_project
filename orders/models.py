@@ -1042,6 +1042,27 @@ class Ride(models.Model):
         help_text="Dropoff longitude coordinate"
     )
     
+    # Property aliases for compatibility with fare calculation code
+    @property
+    def pickup_latitude(self):
+        """Alias for pickup_lat to match fare calculation API."""
+        return self.pickup_lat
+    
+    @property
+    def pickup_longitude(self):
+        """Alias for pickup_lng to match fare calculation API."""
+        return self.pickup_lng
+    
+    @property
+    def dropoff_latitude(self):
+        """Alias for drop_lat to match fare calculation API."""
+        return self.drop_lat
+    
+    @property
+    def dropoff_longitude(self):
+        """Alias for drop_lng to match fare calculation API."""
+        return self.drop_lng
+    
     # Status and Timestamps
     status = models.CharField(
         max_length=20,
@@ -1088,6 +1109,63 @@ class Ride(models.Model):
         null=True,
         blank=True,
         help_text="Final calculated fare after completion"
+    )
+    
+    # Fare Calculation Fields (Task 10A/10B)
+    fare = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Calculated fare using distance and surge multiplier"
+    )
+    
+    surge_multiplier = models.DecimalField(
+        max_digits=3,
+        decimal_places=2,
+        default=1.0,
+        help_text="Surge multiplier for peak hours (1.0 = normal, 1.5 = 50% surge)"
+    )
+    
+    # Payment Fields (Task 11A/11B)
+    PAYMENT_STATUS_UNPAID = 'UNPAID'
+    PAYMENT_STATUS_PAID = 'PAID'
+    
+    PAYMENT_STATUS_CHOICES = [
+        (PAYMENT_STATUS_UNPAID, 'Unpaid'),
+        (PAYMENT_STATUS_PAID, 'Paid'),
+    ]
+    
+    PAYMENT_METHOD_CASH = 'CASH'
+    PAYMENT_METHOD_UPI = 'UPI'
+    PAYMENT_METHOD_CARD = 'CARD'
+    
+    PAYMENT_METHOD_CHOICES = [
+        (PAYMENT_METHOD_CASH, 'Cash'),
+        (PAYMENT_METHOD_UPI, 'UPI'),
+        (PAYMENT_METHOD_CARD, 'Card'),
+    ]
+    
+    payment_status = models.CharField(
+        max_length=10,
+        choices=PAYMENT_STATUS_CHOICES,
+        default=PAYMENT_STATUS_UNPAID,
+        db_index=True,
+        help_text="Payment status of the ride"
+    )
+    
+    payment_method = models.CharField(
+        max_length=10,
+        choices=PAYMENT_METHOD_CHOICES,
+        null=True,
+        blank=True,
+        help_text="Method used for payment (Cash, UPI, Card)"
+    )
+    
+    paid_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when payment was marked as complete"
     )
     
     class Meta:

@@ -914,3 +914,266 @@ class UpdateOrderStatusSerializer(serializers.Serializer):
                 )
         
         return data
+
+
+# =============================================================================
+# RIDE FARE CALCULATION SERIALIZERS (Task 10A)
+# =============================================================================
+
+class FareCalculationSerializer(serializers.ModelSerializer):
+    """
+    Serializer for calculating and storing ride fare.
+    
+    This serializer handles the complete fare calculation workflow:
+    1. Validates that the ride is in COMPLETED status
+    2. Ensures fare hasn't already been calculated
+    3. Calculates distance using Haversine formula
+    4. Applies fare formula: base_fare + (distance × per_km_rate) × surge_multiplier
+    5. Saves the calculated fare to the Ride model
+    
+    Task 10A: Calculate & Store Ride Fare — Serializer
+    
+    Fare Formula:
+        fare = base_fare + (distance_in_km × per_km_rate) × surge_multiplier
+    
+    Constants:
+        - base_fare: ₹50
+        - per_km_rate: ₹10/km
+        - surge_multiplier: 1.0 (normal) or 1.5 (peak hours)
+    
+    Usage:
+        >>> ride = Ride.objects.get(id=42)
+        >>> serializer = FareCalculationSerializer(instance=ride)
+        >>> serializer.is_valid(raise_exception=True)
+        >>> # Fare is automatically calculated and saved during validation
+        >>> print(f"Fare: ₹{ride.fare}")
+    """
+    class Meta:
+        model = Ride
+        fields = ['fare']
+        read_only_fields = ['fare']
+    
+    def validate(self, data):
+        """
+        Validate ride state and calculate fare.
+        
+        This method performs all validation and fare calculation logic:
+        - Ensures ride is completed before calculating fare
+        - Prevents re-calculation if fare already exists
+        - Calculates distance between pickup and dropoff
+        - Applies fare formula and saves to database
+        
+        Raises:
+            serializers.ValidationError: If validation fails
+        """
+        ride = self.instance  # Get the Ride instance this serializer is bound to
+        
+        # Validate ride state (must be completed, fare not already set)
+        self._validate_ride_state(ride)
+        
+        # Calculate distance using Haversine formula
+        distance_km = self._calculate_distance(
+            ride.pickup_latitude,
+            ride.pickup_longitude,
+            ride.dropoff_latitude,
+            ride.dropoff_longitude
+        )
+        
+        # Apply fare calculation formula
+        base_fare = 50  # ₹50 base fare
+        per_km_rate = 10  # ₹10 per kilometer
+        surge_multiplier = float(ride.surge_multiplier or 1.0)  # Convert Decimal to float, default to 1.0 if not set
+        
+        # Calculate fare: base + (distance × rate) × surge
+        fare = base_fare + (distance_km * per_km_rate) * surge_multiplier
+        
+        # Round to 2 decimal places and save
+        ride.fare = round(fare, 2)
+        ride.save(update_fields=['fare'])
+        
+        return data
+    
+    def _validate_ride_state(self, ride):
+        """
+        Validate that ride is in a valid state for fare calculation.
+        
+        Args:
+            ride (Ride): The ride instance to validate
+        
+        Raises:
+            serializers.ValidationError: If ride is not completed or fare already exists
+        """
+        # Ride must be completed before fare can be calculated
+        if ride.status != Ride.STATUS_COMPLETED:
+            raise serializers.ValidationError(
+                "Ride must be completed before fare can be calculated."
+            )
+        
+        # Prevent re-calculation if fare already exists
+        if ride.fare is not None:
+            raise serializers.ValidationError(
+                "Fare has already been calculated for this ride."
+            )
+    
+    def _calculate_distance(self, lat1, lon1, lat2, lon2):
+        """
+        Calculate great-circle distance between two points using Haversine formula.
+        
+        The Haversine formula calculates the shortest distance over the Earth's
+        surface, giving an "as-the-crow-flies" distance between points.
+        
+        Args:
+            lat1 (float): Pickup latitude in degrees
+            lon1 (float): Pickup longitude in degrees
+            lat2 (float): Dropoff latitude in degrees
+            lon2 (float): Dropoff longitude in degrees
+        
+        Returns:
+            float: Distance in kilometers
+        
+        Formula:
+            a = sin²(Δφ/2) + cos φ1 × cos φ2 × sin²(Δλ/2)
+            c = 2 × atan2(√a, √(1−a))
+            d = R × c
+        
+        Where:
+            φ = latitude, λ = longitude, R = Earth's radius (6371 km)
+        """
+        import math
+        
+        R = 6371  # Earth's radius in kilometers
+        
+        # Convert latitude and longitude from degrees to radians
+        phi1 = math.radians(float(lat1))
+        phi2 = math.radians(float(lat2))
+        delta_phi = math.radians(float(lat2) - float(lat1))
+        delta_lambda = math.radians(float(lon2) - float(lon1))
+        
+        # Haversine formula
+        a = (
+            math.sin(delta_phi / 2) ** 2 +
+            math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2
+        )
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        
+        # Distance in kilometers
+        distance = R * c
+        
+        return distance
+
+
+# =============================================================================
+# RIDE PAYMENT SERIALIZERS (Task 11A)
+# =============================================================================
+
+class RidePaymentSerializer(serializers.ModelSerializer):
+    """
+    Serializer for marking a ride as paid and recording payment details.
+    
+    This serializer handles the payment workflow:
+    1. Validates that the ride is completed before accepting payment
+    2. Prevents changes if the ride is already marked as paid
+    3. Records the payment method (CASH, UPI, or CARD)
+    4. Updates payment status to PAID
+    5. Records the paid_at timestamp
+    
+    Task 11A: Payment Flow — Mark Ride as Paid (Serializer)
+    
+    Payment Methods:
+        - CASH: Cash payment
+        - UPI: UPI payment (PhonePe, Google Pay, etc.)
+        - CARD: Credit/Debit card payment
+    
+    Payment Status:
+        - UNPAID: Default status, payment not received
+        - PAID: Payment received and confirmed
+    
+    Usage:
+        >>> ride = Ride.objects.get(id=42)
+        >>> serializer = RidePaymentSerializer(
+        ...     instance=ride,
+        ...     data={'payment_method': 'CASH', 'payment_status': 'PAID'}
+        ... )
+        >>> if serializer.is_valid():
+        ...     serializer.save()
+        ...     print(f"Paid via {ride.payment_method} at {ride.paid_at}")
+    """
+    class Meta:
+        model = Ride
+        fields = ['payment_method', 'payment_status']
+    
+    def validate(self, data):
+        """
+        Validate payment data and ride state.
+        
+        Ensures:
+        - Ride is not already marked as paid (prevent duplicate payments)
+        - Ride is completed before marking as paid
+        - Payment method is provided when marking as paid
+        
+        Args:
+            data (dict): Validated data containing payment_method and payment_status
+        
+        Returns:
+            dict: Validated data
+        
+        Raises:
+            serializers.ValidationError: If validation fails
+        """
+        ride = self.instance
+        
+        # Prevent changes if already paid (immutable after payment)
+        if ride.payment_status == Ride.PAYMENT_STATUS_PAID:
+            raise serializers.ValidationError(
+                "Ride is already marked as paid. Payment records cannot be modified."
+            )
+        
+        # Only allow PAID status if ride is completed
+        if data.get('payment_status') == Ride.PAYMENT_STATUS_PAID:
+            if ride.status != Ride.STATUS_COMPLETED:
+                raise serializers.ValidationError(
+                    "Ride must be completed before marking as paid."
+                )
+            
+            # Ensure payment method is provided when marking as paid
+            if not data.get('payment_method'):
+                raise serializers.ValidationError(
+                    "Payment method is required when marking ride as paid."
+                )
+        
+        return data
+    
+    def update(self, instance, validated_data):
+        """
+        Update ride with payment information.
+        
+        Updates the payment_method and payment_status fields, and sets
+        the paid_at timestamp if the status is being changed to PAID.
+        
+        Args:
+            instance (Ride): The ride instance to update
+            validated_data (dict): Validated payment data
+        
+        Returns:
+            Ride: Updated ride instance
+        """
+        from django.utils import timezone
+        
+        # Update payment method and status
+        instance.payment_method = validated_data.get(
+            'payment_method',
+            instance.payment_method
+        )
+        instance.payment_status = validated_data.get(
+            'payment_status',
+            instance.payment_status
+        )
+        
+        # Set paid_at timestamp if marking as PAID
+        if validated_data.get('payment_status') == Ride.PAYMENT_STATUS_PAID:
+            instance.paid_at = timezone.now()
+        
+        # Save with specific fields to avoid unnecessary updates
+        instance.save(update_fields=['payment_method', 'payment_status', 'paid_at'])
+        
+        return instance

@@ -78,6 +78,7 @@ This repository contains the code for a comprehensive restaurant management and 
 - **[Category API Guide](CATEGORY_API_GUIDE.md)** - Menu category CRUD operations
 - **[Daily Specials API Guide](DAILY_SPECIALS_API_GUIDE.md)** - Daily specials endpoint documentation
 - **[User Review Model](USER_REVIEW_MODEL.md)** - User review model and usage documentation
+- **[User Reviews API](USER_REVIEWS_API.md)** - Complete user reviews API documentation
 - **[Shopping Cart Guide](SHOPPING_CART_GUIDE.md)** - Cart functionality documentation
 - **[Search API Guide](SEARCH_API_GUIDE.md)** - Search and filtering APIs
 - **[Ride Booking Documentation](RIDE_BOOKING_DOCS.md)** - Ride-sharing platform APIs
@@ -121,6 +122,14 @@ This repository contains the code for a comprehensive restaurant management and 
 - **`DELETE /PerpexBistro/api/menu-categories/<id>/`** - Delete category
 - **`GET /PerpexBistro/menu/search/`** - Search menu items
 - **`GET /PerpexBistro/api/daily-specials/`** - Get daily specials (public, no auth required)
+
+#### User Reviews
+- **`GET /PerpexBistro/api/reviews/`** - List all reviews (public, supports filtering)
+- **`POST /PerpexBistro/api/reviews/`** - Create new review (authenticated)
+- **`GET /PerpexBistro/api/reviews/<id>/`** - Get review details (public)
+- **`PUT/PATCH /PerpexBistro/api/reviews/<id>/`** - Update review (owner only)
+- **`DELETE /PerpexBistro/api/reviews/<id>/`** - Delete review (owner only)
+- **`GET /PerpexBistro/api/reviews/my_reviews/`** - Get user's own reviews (authenticated)
 
 ### User Order History
 Authenticated users can retrieve their order history with full details.

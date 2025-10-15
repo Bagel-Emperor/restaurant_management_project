@@ -11,7 +11,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 import logging
 from .forms import FeedbackForm, ContactSubmissionForm
-from .models import Restaurant, MenuItem, MenuCategory, Cart, CartItem, ContactSubmission, Table
+from .models import Restaurant, MenuItem, MenuCategory, Cart, CartItem, ContactSubmission, Table, UserReview
 from .serializers import (
     RestaurantSerializer,
     MenuItemSerializer,
@@ -19,6 +19,7 @@ from .serializers import (
     ContactSubmissionSerializer,
     TableSerializer,
     DailySpecialSerializer,
+    UserReviewSerializer,
 )
 
 # Email configuration constants
@@ -937,3 +938,152 @@ class AvailableTablesAPIView(ListAPIView):
             logger.info(f"Available tables query returned {available_count} tables")
         
         return queryset.order_by('restaurant__name', 'number')
+
+
+# ================================
+# USER REVIEWS API
+# ================================
+
+class UserReviewViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for full CRUD operations on user reviews.
+    
+    Provides:
+    - List all reviews: GET /api/reviews/ (public, supports filtering by menu_item)
+    - Retrieve single review: GET /api/reviews/<id>/ (public)
+    - Create new review: POST /api/reviews/ (authenticated only)
+    - Update review: PUT/PATCH /api/reviews/<id>/ (authenticated, own reviews only)
+    - Delete review: DELETE /api/reviews/<id>/ (authenticated, own reviews only)
+    
+    Authentication:
+    - Read operations (list, retrieve): Public access
+    - Write operations (create, update, delete): Authenticated users only
+    - Users can only update/delete their own reviews
+    
+    Filtering:
+    - Filter by menu_item: GET /api/reviews/?menu_item=<menu_item_id>
+    - Filter by rating: GET /api/reviews/?rating=5
+    - Filter by user: GET /api/reviews/?user=<user_id>
+    
+    Validation:
+    - Rating must be between 1 and 5
+    - Comment must be at least 10 characters
+    - Users can only review each menu item once
+    - Menu item must be available for review
+    """
+    queryset = UserReview.objects.select_related('user', 'menu_item').all()
+    serializer_class = UserReviewSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    
+    def get_queryset(self):
+        """
+        Filter reviews by menu_item, rating, or user if provided in query params.
+        """
+        queryset = super().get_queryset()
+        
+        # Filter by menu_item
+        menu_item_id = self.request.query_params.get('menu_item')
+        if menu_item_id:
+            queryset = queryset.filter(menu_item_id=menu_item_id)
+            logger.info('Filtered reviews for menu_item ID: %s', menu_item_id)
+        
+        # Filter by rating
+        rating = self.request.query_params.get('rating')
+        if rating:
+            try:
+                rating_int = int(rating)
+                queryset = queryset.filter(rating=rating_int)
+                logger.info('Filtered reviews by rating: %s', rating_int)
+            except ValueError:
+                logger.warning('Invalid rating parameter: %s', rating)
+        
+        # Filter by user
+        user_id = self.request.query_params.get('user')
+        if user_id:
+            queryset = queryset.filter(user_id=user_id)
+            logger.info('Filtered reviews by user ID: %s', user_id)
+        
+        return queryset.order_by('-review_date')
+    
+    def perform_create(self, serializer):
+        """
+        Automatically set the user to the authenticated user when creating a review.
+        """
+        user = self.request.user
+        menu_item = serializer.validated_data['menu_item']
+        serializer.save(user=user)
+        logger.info('User %s created review for menu item: %s', user.username, menu_item.name)
+    
+    def perform_update(self, serializer):
+        """
+        Log when a review is updated.
+        """
+        review = serializer.instance
+        logger.info('User %s updated review ID: %s', self.request.user.username, review.id)
+        serializer.save()
+    
+    def perform_destroy(self, instance):
+        """
+        Log when a review is deleted.
+        """
+        logger.info('User %s deleted review ID: %s', self.request.user.username, instance.id)
+        instance.delete()
+    
+    def update(self, request, *args, **kwargs):
+        """
+        Ensure users can only update their own reviews.
+        """
+        instance = self.get_object()
+        if instance.user != request.user:
+            logger.warning('User %s attempted to update review owned by %s', 
+                         request.user.username, instance.user.username)
+            return Response(
+                {"detail": "You can only update your own reviews."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().update(request, *args, **kwargs)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """
+        Ensure users can only partially update their own reviews.
+        """
+        instance = self.get_object()
+        if instance.user != request.user:
+            logger.warning('User %s attempted to update review owned by %s', 
+                         request.user.username, instance.user.username)
+            return Response(
+                {"detail": "You can only update your own reviews."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().partial_update(request, *args, **kwargs)
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        Ensure users can only delete their own reviews.
+        """
+        instance = self.get_object()
+        if instance.user != request.user:
+            logger.warning('User %s attempted to delete review owned by %s', 
+                         request.user.username, instance.user.username)
+            return Response(
+                {"detail": "You can only delete your own reviews."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)
+    
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def my_reviews(self, request):
+        """
+        Custom action to get all reviews by the authenticated user.
+        Endpoint: GET /api/reviews/my_reviews/
+        """
+        user_reviews = self.get_queryset().filter(user=request.user)
+        page = self.paginate_queryset(user_reviews)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(user_reviews, many=True)
+        logger.info('User %s retrieved their reviews', request.user.username)
+        return Response(serializer.data)
+

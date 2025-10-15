@@ -4,7 +4,7 @@ from .views import (
     home_view, about_view, contact_view, menu_view, reservations_view, feedback_view, faq_view,
     create_restaurant, list_restaurants, get_restaurant, update_restaurant, delete_restaurant,
     create_menu_item, list_menu_items, get_menu_item, update_menu_item, delete_menu_item,
-    MenuCategoryViewSet, MenuItemViewSet, DailySpecialsAPIView,
+    MenuCategoryViewSet, MenuItemViewSet, DailySpecialsAPIView, UserReviewViewSet,
     # Cart API views
     cart_summary, add_to_cart_api, remove_from_cart_api, update_cart_item_api, clear_cart_api,
     # Contact form API view
@@ -17,6 +17,7 @@ from .views import (
 router = DefaultRouter()
 router.register(r'menu-categories', MenuCategoryViewSet, basename='menucategory')
 router.register(r'menu-items', MenuItemViewSet, basename='menuitem')
+router.register(r'reviews', UserReviewViewSet, basename='userreview')
 
 # URL patterns define which view is called for each URL
 urlpatterns = [

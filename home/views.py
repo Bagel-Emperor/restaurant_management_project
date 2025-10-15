@@ -33,11 +33,44 @@ from rest_framework.generics import ListAPIView, RetrieveAPIView
 # Configure logger
 logger = logging.getLogger(__name__)
 
-# DRF API endpoint for listing all menu categories
+# ================================
+# MENU CATEGORY CRUD API
+# ================================
 
-class MenuCategoryListAPIView(ListAPIView):
-    queryset = MenuCategory.objects.all()
+class MenuCategoryViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for full CRUD operations on menu categories.
+    
+    Provides:
+    - List all categories: GET /api/menu-categories/ (public)
+    - Retrieve single category: GET /api/menu-categories/<id>/ (public)
+    - Create new category: POST /api/menu-categories/ (authenticated only)
+    - Update category: PUT/PATCH /api/menu-categories/<id>/ (authenticated only)
+    - Delete category: DELETE /api/menu-categories/<id>/ (authenticated only)
+    
+    Permissions:
+    - Read operations (list, retrieve) are public
+    - Write operations (create, update, delete) require authentication
+    """
+    queryset = MenuCategory.objects.all().order_by('name')
     serializer_class = MenuCategorySerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    
+    def perform_create(self, serializer):
+        """Custom create logic with audit logging."""
+        serializer.save()
+        logger.info('Created menu category: %s', serializer.instance.name)
+    
+    def perform_update(self, serializer):
+        """Custom update logic with audit logging."""
+        serializer.save()
+        logger.info('Updated menu category: %s', serializer.instance.name)
+    
+    def perform_destroy(self, instance):
+        """Custom delete logic with audit logging."""
+        category_name = instance.name
+        instance.delete()
+        logger.info('Deleted menu category: %s', category_name)
 
 
 class DailySpecialsAPIView(ListAPIView):

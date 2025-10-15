@@ -5,12 +5,16 @@ This API allows filtering menu items by category, providing a structured way to 
 
 ## Endpoints
 
-### 1. List Menu Categories
+### 1. Menu Category CRUD Operations
+
+#### List All Menu Categories
 ```
 GET /PerpexBistro/api/menu-categories/
 ```
 
-**Description**: Retrieve a list of all available menu categories.
+**Description**: Retrieve a list of all available menu categories (ordered alphabetically by name).
+
+**Authentication**: Not required (public access)
 
 **Response Example**:
 ```json
@@ -21,14 +25,101 @@ GET /PerpexBistro/api/menu-categories/
     },
     {
         "id": 2,
-        "name": "Main Courses"
+        "name": "Desserts"
     },
     {
         "id": 3,
-        "name": "Desserts"
+        "name": "Main Courses"
     }
 ]
 ```
+
+#### Retrieve Single Menu Category
+```
+GET /PerpexBistro/api/menu-categories/{id}/
+```
+
+**Description**: Retrieve details of a specific menu category by ID.
+
+**Authentication**: Not required (public access)
+
+**Response Example**:
+```json
+{
+    "id": 1,
+    "name": "Appetizers"
+}
+```
+
+#### Create Menu Category
+```
+POST /PerpexBistro/api/menu-categories/
+```
+
+**Description**: Create a new menu category.
+
+**Authentication**: Required (must be authenticated user)
+
+**Request Body**:
+```json
+{
+    "name": "Beverages"
+}
+```
+
+**Response Example** (201 Created):
+```json
+{
+    "id": 4,
+    "name": "Beverages"
+}
+```
+
+**Notes**: 
+- Category creation is logged in the system
+- Category names must be unique
+
+#### Update Menu Category
+```
+PUT /PerpexBistro/api/menu-categories/{id}/
+PATCH /PerpexBistro/api/menu-categories/{id}/
+```
+
+**Description**: Update an existing menu category (PUT for full update, PATCH for partial).
+
+**Authentication**: Required (must be authenticated user)
+
+**Request Body**:
+```json
+{
+    "name": "Drinks & Beverages"
+}
+```
+
+**Response Example** (200 OK):
+```json
+{
+    "id": 4,
+    "name": "Drinks & Beverages"
+}
+```
+
+**Notes**: Category updates are logged in the system
+
+#### Delete Menu Category
+```
+DELETE /PerpexBistro/api/menu-categories/{id}/
+```
+
+**Description**: Delete a menu category.
+
+**Authentication**: Required (must be authenticated user)
+
+**Response**: 204 No Content
+
+**Notes**: 
+- Category deletion is logged in the system
+- Consider impact on menu items with this category before deletion
 
 ### 2. List Menu Items (with Category Support)
 ```
@@ -118,15 +209,18 @@ GET /PerpexBistro/api/menu-items/?category=1&restaurant=1&available=true
 ## Features
 
 ### ✅ Implemented Features
-1. **Category Relationship**: MenuItem now has a ForeignKey to MenuCategory
-2. **Category Filtering**: Filter menu items by category ID or name
-3. **Partial Name Matching**: Filter using partial category names (case-insensitive)
-4. **Combined Filtering**: Combine category filters with existing restaurant/availability filters
-5. **Graceful Null Handling**: Menu items without categories return `null` for category fields
-6. **Optimized Queries**: Uses `select_related()` for efficient database queries
+1. **Full CRUD for Categories**: Create, Read, Update, and Delete menu categories via REST API
+2. **Category Relationship**: MenuItem has a ForeignKey to MenuCategory
+3. **Category Filtering**: Filter menu items by category ID or name
+4. **Partial Name Matching**: Filter using partial category names (case-insensitive)
+5. **Combined Filtering**: Combine category filters with existing restaurant/availability filters
+6. **Graceful Null Handling**: Menu items without categories return `null` for category fields
+7. **Optimized Queries**: Uses `select_related()` for efficient database queries
+8. **Audit Logging**: All category create/update/delete operations are logged
 
 ### 🎯 API Behavior
-- **Public Access**: All filtering endpoints are publicly accessible (no authentication required)
+- **Public Read Access**: List and retrieve operations are publicly accessible (no authentication required)
+- **Authenticated Write Access**: Create, update, and delete operations require authentication
 - **Case-Insensitive**: Category name filtering is case-insensitive
 - **Partial Matching**: Supports partial category name matching using `icontains`
 - **Empty Results**: Invalid categories return empty result sets (not errors)

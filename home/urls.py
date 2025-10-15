@@ -4,7 +4,7 @@ from .views import (
     home_view, about_view, contact_view, menu_view, reservations_view, feedback_view, faq_view,
     create_restaurant, list_restaurants, get_restaurant, update_restaurant, delete_restaurant,
     create_menu_item, list_menu_items, get_menu_item, update_menu_item, delete_menu_item,
-    MenuCategoryListAPIView, MenuItemViewSet, DailySpecialsAPIView,
+    MenuCategoryViewSet, MenuItemViewSet, DailySpecialsAPIView,
     # Cart API views
     cart_summary, add_to_cart_api, remove_from_cart_api, update_cart_item_api, clear_cart_api,
     # Contact form API view
@@ -15,6 +15,7 @@ from .views import (
 
 # Create router for ViewSets
 router = DefaultRouter()
+router.register(r'menu-categories', MenuCategoryViewSet, basename='menucategory')
 router.register(r'menu-items', MenuItemViewSet, basename='menuitem')
 
 # URL patterns define which view is called for each URL
@@ -42,13 +43,10 @@ urlpatterns = [
     path('api/restaurants/<int:pk>/update/', update_restaurant, name='restaurant-update'),
     path('api/restaurants/<int:pk>/delete/', delete_restaurant, name='restaurant-delete'),
 
-    # API endpoint for menu categories
-    path('api/menu-categories/', MenuCategoryListAPIView.as_view(), name='menu-category-list'),
-    
     # API endpoint for daily specials
     path('api/daily-specials/', DailySpecialsAPIView.as_view(), name='daily-specials'),
 
-    # API endpoints for menu items using ViewSet (replaces individual CRUD endpoints)
+    # API endpoints for ViewSets (menu-categories and menu-items)
     path('api/', include(router.urls)),
     
     # Legacy individual menu item endpoints (keeping for backward compatibility)

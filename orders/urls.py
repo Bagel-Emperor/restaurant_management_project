@@ -21,6 +21,7 @@ from .views import (
     RiderHistoryView,
     DriverHistoryView,
     UpdateOrderStatusView,
+    get_order_status,  # New: Order status retrieval endpoint
     # Task 10B & 11B: Fare calculation and payment views
     calculate_fare,
     mark_ride_as_paid
@@ -43,6 +44,7 @@ urlpatterns = [
     path('orders/history/', UserOrderHistoryView.as_view(), name='user-order-history'),
     path('orders/<str:order_id>/cancel/', OrderCancellationView.as_view(), name='order-cancel'),
     path('orders/<int:order_id>/', OrderDetailView.as_view(), name='order-detail'),
+    path('orders/<str:order_id>/status/', get_order_status, name='order-status'),  # New: Get order status
     path('orders/update-status/', UpdateOrderStatusView.as_view(), name='order-update-status'),
     path('customers/', CustomerListCreateAPIView.as_view(), name='customer-list-create'),
     

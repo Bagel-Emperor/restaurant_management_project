@@ -14,6 +14,8 @@ GET /PerpexBistro/api/menu-categories/
 
 **Description**: Retrieve a list of all available menu categories (ordered alphabetically by name).
 
+**Authentication**: Not required (public access)
+
 **Response Example**:
 ```json
 [
@@ -39,6 +41,8 @@ GET /PerpexBistro/api/menu-categories/{id}/
 
 **Description**: Retrieve details of a specific menu category by ID.
 
+**Authentication**: Not required (public access)
+
 **Response Example**:
 ```json
 {
@@ -53,6 +57,8 @@ POST /PerpexBistro/api/menu-categories/
 ```
 
 **Description**: Create a new menu category.
+
+**Authentication**: Required (must be authenticated user)
 
 **Request Body**:
 ```json
@@ -81,6 +87,8 @@ PATCH /PerpexBistro/api/menu-categories/{id}/
 
 **Description**: Update an existing menu category (PUT for full update, PATCH for partial).
 
+**Authentication**: Required (must be authenticated user)
+
 **Request Body**:
 ```json
 {
@@ -104,6 +112,8 @@ DELETE /PerpexBistro/api/menu-categories/{id}/
 ```
 
 **Description**: Delete a menu category.
+
+**Authentication**: Required (must be authenticated user)
 
 **Response**: 204 No Content
 
@@ -209,7 +219,8 @@ GET /PerpexBistro/api/menu-items/?category=1&restaurant=1&available=true
 8. **Audit Logging**: All category create/update/delete operations are logged
 
 ### 🎯 API Behavior
-- **Public Access**: All filtering endpoints are publicly accessible (no authentication required)
+- **Public Read Access**: List and retrieve operations are publicly accessible (no authentication required)
+- **Authenticated Write Access**: Create, update, and delete operations require authentication
 - **Case-Insensitive**: Category name filtering is case-insensitive
 - **Partial Matching**: Supports partial category name matching using `icontains`
 - **Empty Results**: Invalid categories return empty result sets (not errors)

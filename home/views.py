@@ -42,33 +42,35 @@ class MenuCategoryViewSet(viewsets.ModelViewSet):
     API endpoint for full CRUD operations on menu categories.
     
     Provides:
-    - List all categories: GET /api/menu-categories/
-    - Retrieve single category: GET /api/menu-categories/<id>/
-    - Create new category: POST /api/menu-categories/
-    - Update category: PUT/PATCH /api/menu-categories/<id>/
-    - Delete category: DELETE /api/menu-categories/<id>/
+    - List all categories: GET /api/menu-categories/ (public)
+    - Retrieve single category: GET /api/menu-categories/<id>/ (public)
+    - Create new category: POST /api/menu-categories/ (authenticated only)
+    - Update category: PUT/PATCH /api/menu-categories/<id>/ (authenticated only)
+    - Delete category: DELETE /api/menu-categories/<id>/ (authenticated only)
     
-    All operations require appropriate permissions.
+    Permissions:
+    - Read operations (list, retrieve) are public
+    - Write operations (create, update, delete) require authentication
     """
     queryset = MenuCategory.objects.all().order_by('name')
     serializer_class = MenuCategorySerializer
-    permission_classes = [permissions.AllowAny]  # Adjust as needed for production
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     
     def perform_create(self, serializer):
-        """Custom create logic if needed."""
+        """Custom create logic with audit logging."""
         serializer.save()
-        logger.info(f"Created menu category: {serializer.instance.name}")
+        logger.info('Created menu category: %s', serializer.instance.name)
     
     def perform_update(self, serializer):
-        """Custom update logic if needed."""
+        """Custom update logic with audit logging."""
         serializer.save()
-        logger.info(f"Updated menu category: {serializer.instance.name}")
+        logger.info('Updated menu category: %s', serializer.instance.name)
     
     def perform_destroy(self, instance):
-        """Custom delete logic if needed."""
+        """Custom delete logic with audit logging."""
         category_name = instance.name
         instance.delete()
-        logger.info(f"Deleted menu category: {category_name}")
+        logger.info('Deleted menu category: %s', category_name)
 
 
 class DailySpecialsAPIView(ListAPIView):

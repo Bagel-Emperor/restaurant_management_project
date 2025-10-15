@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
-from django.core.validators import MinValueValidator
+from django.conf import settings
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 
@@ -215,3 +216,44 @@ class Table(models.Model):
 			raise ValidationError("Table capacity must be at least 1")
 		if self.number < 1:
 			raise ValidationError("Table number must be positive")
+
+
+class UserReview(models.Model):
+	"""
+	Represents a user review for a menu item.
+	Each review is associated with a specific user and menu item.
+	"""
+	user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reviews')
+	menu_item = models.ForeignKey(MenuItem, on_delete=models.CASCADE, related_name='reviews')
+	rating = models.IntegerField(
+		validators=[MinValueValidator(1), MaxValueValidator(5)],
+		help_text="Rating from 1 to 5 stars"
+	)
+	comment = models.TextField(help_text="Review comment or feedback")
+	review_date = models.DateTimeField(auto_now_add=True, help_text="When the review was created")
+	
+	class Meta:
+		ordering = ['-review_date']
+		verbose_name = 'User Review'
+		verbose_name_plural = 'User Reviews'
+		constraints = [
+			# Ensure a user can only review a menu item once
+			models.UniqueConstraint(fields=['user', 'menu_item'], name='uniq_user_menu_item_review'),
+			# Ensure rating is between 1 and 5 at database level
+			models.CheckConstraint(check=models.Q(rating__gte=1, rating__lte=5), name='rating_range_1_to_5')
+		]
+		indexes = [
+			models.Index(fields=['menu_item']),
+			models.Index(fields=['user']),
+			models.Index(fields=['rating']),
+			models.Index(fields=['-review_date']),
+		]
+	
+	def __str__(self):
+		return f"{self.user.username}'s review of {self.menu_item.name} - {self.rating}/5"
+	
+	def clean(self):
+		"""Validate rating is between 1 and 5."""
+		if self.rating < 1 or self.rating > 5:
+			raise ValidationError("Rating must be between 1 and 5")
+			raise ValidationError("Rating must be between 1 and 5")

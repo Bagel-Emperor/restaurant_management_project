@@ -215,3 +215,39 @@ class Table(models.Model):
 			raise ValidationError("Table capacity must be at least 1")
 		if self.number < 1:
 			raise ValidationError("Table number must be positive")
+
+
+class UserReview(models.Model):
+	"""
+	Represents a user review for a menu item.
+	Each review is associated with a specific user and menu item.
+	"""
+	user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
+	menu_item = models.ForeignKey(MenuItem, on_delete=models.CASCADE, related_name='reviews')
+	rating = models.IntegerField(
+		validators=[MinValueValidator(1)],
+		help_text="Rating from 1 to 5 stars"
+	)
+	comment = models.TextField(help_text="Review comment or feedback")
+	review_date = models.DateTimeField(auto_now_add=True, help_text="When the review was created")
+	
+	class Meta:
+		ordering = ['-review_date']
+		verbose_name = 'User Review'
+		verbose_name_plural = 'User Reviews'
+		# Ensure a user can only review a menu item once
+		unique_together = [['user', 'menu_item']]
+		indexes = [
+			models.Index(fields=['menu_item']),
+			models.Index(fields=['user']),
+			models.Index(fields=['rating']),
+			models.Index(fields=['-review_date']),
+		]
+	
+	def __str__(self):
+		return f"{self.user.username}'s review of {self.menu_item.name} - {self.rating}/5"
+	
+	def clean(self):
+		"""Validate rating is between 1 and 5."""
+		if self.rating < 1 or self.rating > 5:
+			raise ValidationError("Rating must be between 1 and 5")

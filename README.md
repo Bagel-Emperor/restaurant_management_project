@@ -77,6 +77,7 @@ This repository contains the code for a comprehensive restaurant management and 
 - **[Menu Item API Guide](MENU_ITEM_API_GUIDE.md)** - Menu management APIs
 - **[Category API Guide](CATEGORY_API_GUIDE.md)** - Menu category CRUD operations
 - **[Daily Specials API Guide](DAILY_SPECIALS_API_GUIDE.md)** - Daily specials endpoint documentation
+- **[User Review Model](USER_REVIEW_MODEL.md)** - User review model and usage documentation
 - **[Shopping Cart Guide](SHOPPING_CART_GUIDE.md)** - Cart functionality documentation
 - **[Search API Guide](SEARCH_API_GUIDE.md)** - Search and filtering APIs
 - **[Ride Booking Documentation](RIDE_BOOKING_DOCS.md)** - Ride-sharing platform APIs

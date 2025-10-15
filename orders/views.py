@@ -1329,6 +1329,67 @@ class DriverHistoryView(generics.ListAPIView):
 
 
 # ================================
+# ORDER STATUS RETRIEVAL API VIEW
+# ================================
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def get_order_status(request, order_id):
+	"""
+	Function-based API view to retrieve the current status of an order.
+	
+	This endpoint provides a lightweight way to check order status without
+	fetching all order details. Useful for order tracking and status polling.
+	
+	Args:
+		request: The HTTP request object
+		order_id (str): The unique order identifier (e.g., "ORD-A7X9K2M5")
+	
+	Returns:
+		Response: JSON containing order ID and current status
+	
+	Response (Success - 200 OK):
+		{
+			"order_id": "ORD-A7X9K2M5",
+			"status": "Processing",
+			"updated_at": "2025-10-14T21:45:00Z"
+		}
+	
+	Response (Not Found - 404):
+		{
+			"error": "Order not found",
+			"order_id": "ORD-INVALID"
+		}
+	
+	Examples:
+		>>> GET /PerpexBistro/orders/ORD-A7X9K2M5/status/
+		{
+			"order_id": "ORD-A7X9K2M5",
+			"status": "Completed",
+			"updated_at": "2025-10-14T22:00:00Z"
+		}
+	"""
+	try:
+		# Retrieve the order with status relation for efficiency
+		order = Order.objects.select_related('status').get(order_id=order_id)
+		
+		# Return order ID, status, and last update time
+		return Response({
+			'order_id': order.order_id,
+			'status': order.status.name,
+			'updated_at': order.updated_at
+		}, status=status.HTTP_200_OK)
+		
+	except Order.DoesNotExist:
+		# Handle case where order doesn't exist
+		logger.warning('Order status retrieval failed: Order %s not found', order_id)
+		return Response({
+			'error': 'Order not found',
+			'order_id': order_id
+		}, status=status.HTTP_404_NOT_FOUND)
+
+
+# ================================
 # ORDER STATUS UPDATE API VIEW
 # ================================
 

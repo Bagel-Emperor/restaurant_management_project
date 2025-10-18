@@ -14,6 +14,7 @@ from .forms import FeedbackForm, ContactSubmissionForm
 from .models import Restaurant, MenuItem, MenuCategory, Cart, CartItem, ContactSubmission, Table, UserReview
 from .serializers import (
     RestaurantSerializer,
+    RestaurantInfoSerializer,
     MenuItemSerializer,
     MenuCategorySerializer,
     ContactSubmissionSerializer,
@@ -775,7 +776,6 @@ def restaurant_info(request):
             )
         
         # Serialize the restaurant data
-        from .serializers import RestaurantInfoSerializer
         serializer = RestaurantInfoSerializer(restaurant)
         
         logger.info(f"Restaurant information retrieved successfully for: {restaurant.name}")

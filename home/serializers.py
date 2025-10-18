@@ -60,39 +60,34 @@ class RestaurantInfoSerializer(serializers.ModelSerializer):
     
     def get_address(self, obj):
         """Get street address from related RestaurantLocation."""
-        try:
+        if hasattr(obj, 'location') and obj.location:
             return obj.location.address
-        except RestaurantLocation.DoesNotExist:
-            return None
+        return None
     
     def get_city(self, obj):
         """Get city from related RestaurantLocation."""
-        try:
+        if hasattr(obj, 'location') and obj.location:
             return obj.location.city
-        except RestaurantLocation.DoesNotExist:
-            return None
+        return None
     
     def get_state(self, obj):
         """Get state from related RestaurantLocation."""
-        try:
+        if hasattr(obj, 'location') and obj.location:
             return obj.location.state
-        except RestaurantLocation.DoesNotExist:
-            return None
+        return None
     
     def get_zip_code(self, obj):
         """Get zip code from related RestaurantLocation."""
-        try:
+        if hasattr(obj, 'location') and obj.location:
             return obj.location.zip_code
-        except RestaurantLocation.DoesNotExist:
-            return None
+        return None
     
     def get_full_address(self, obj):
         """Get formatted full address string."""
-        try:
+        if hasattr(obj, 'location') and obj.location:
             location = obj.location
             return f"{location.address}, {location.city}, {location.state} {location.zip_code}"
-        except RestaurantLocation.DoesNotExist:
-            return None
+        return None
 
 class MenuItemSerializer(serializers.ModelSerializer):
     """

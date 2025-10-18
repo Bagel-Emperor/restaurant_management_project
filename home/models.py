@@ -3,7 +3,9 @@ from django.contrib.auth.models import User
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from decimal import Decimal
+from datetime import datetime, timedelta
 
 # Constants
 SESSION_KEY_DISPLAY_LENGTH = 10
@@ -258,3 +260,236 @@ class UserReview(models.Model):
 		if self.rating < 1 or self.rating > 5:
 			raise ValidationError("Rating must be between 1 and 5")
 			raise ValidationError("Rating must be between 1 and 5")
+
+
+class Reservation(models.Model):
+	"""
+	Represents a table reservation made by a customer.
+	Includes methods for finding available time slots and preventing past reservations.
+	"""
+	STATUS_CHOICES = [
+		('pending', 'Pending'),
+		('confirmed', 'Confirmed'),
+		('cancelled', 'Cancelled'),
+		('completed', 'Completed'),
+		('no_show', 'No Show'),
+	]
+	
+	# Customer information
+	customer_name = models.CharField(max_length=100, help_text="Full name of the customer")
+	customer_email = models.EmailField(help_text="Email address for confirmation")
+	customer_phone = models.CharField(max_length=20, help_text="Phone number for contact")
+	
+	# Reservation details
+	table = models.ForeignKey(Table, on_delete=models.CASCADE, related_name='reservations')
+	party_size = models.PositiveIntegerField(
+		validators=[MinValueValidator(1)],
+		help_text="Number of people in the party"
+	)
+	reservation_date = models.DateField(help_text="Date of the reservation")
+	reservation_time = models.TimeField(help_text="Time of the reservation")
+	duration_minutes = models.PositiveIntegerField(
+		default=120,
+		validators=[MinValueValidator(30)],
+		help_text="Expected duration in minutes (default: 2 hours)"
+	)
+	
+	# Status and tracking
+	status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='pending')
+	special_requests = models.TextField(blank=True, help_text="Any special requests or notes")
+	
+	# User relationship (optional - for registered users)
+	user = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		on_delete=models.SET_NULL,
+		null=True,
+		blank=True,
+		related_name='reservations',
+		help_text="Linked user account (if registered)"
+	)
+	
+	# Timestamps
+	created_at = models.DateTimeField(auto_now_add=True)
+	updated_at = models.DateTimeField(auto_now=True)
+	
+	class Meta:
+		ordering = ['reservation_date', 'reservation_time']
+		verbose_name = 'Reservation'
+		verbose_name_plural = 'Reservations'
+		indexes = [
+			models.Index(fields=['reservation_date', 'reservation_time']),
+			models.Index(fields=['table']),
+			models.Index(fields=['status']),
+			models.Index(fields=['customer_email']),
+			models.Index(fields=['user']),
+		]
+		constraints = [
+			# Prevent same table being reserved at exact same date and start time
+			models.UniqueConstraint(
+				fields=['table', 'reservation_date', 'reservation_time'],
+				name='unique_table_datetime'
+			)
+		]
+	
+	def __str__(self):
+		return f"{self.customer_name} - Table {self.table.number} on {self.reservation_date} at {self.reservation_time}"
+	
+	@property
+	def reservation_datetime(self):
+		"""Combine date and time into a single datetime object."""
+		return timezone.make_aware(
+			datetime.combine(self.reservation_date, self.reservation_time)
+		)
+	
+	@property
+	def end_datetime(self):
+		"""Calculate when the reservation ends."""
+		return self.reservation_datetime + timedelta(minutes=self.duration_minutes)
+	
+	@property
+	def is_past(self):
+		"""Check if reservation is in the past."""
+		return self.reservation_datetime < timezone.now()
+	
+	@property
+	def is_upcoming(self):
+		"""Check if reservation is in the future."""
+		return self.reservation_datetime > timezone.now()
+	
+	def clean(self):
+		"""
+		Validate reservation data.
+		Prevents reservations in the past and ensures party size doesn't exceed table capacity.
+		"""
+		# Prevent reservations in the past
+		if hasattr(self, 'reservation_date') and hasattr(self, 'reservation_time'):
+			reservation_dt = timezone.make_aware(
+				datetime.combine(self.reservation_date, self.reservation_time)
+			)
+			if reservation_dt < timezone.now():
+				raise ValidationError("Cannot create a reservation for a past date and time.")
+		
+		# Ensure party size doesn't exceed table capacity
+		if hasattr(self, 'table') and hasattr(self, 'party_size'):
+			if self.party_size > self.table.capacity:
+				raise ValidationError(
+					f"Party size ({self.party_size}) exceeds table capacity ({self.table.capacity})."
+				)
+		
+		# Validate duration is reasonable
+		if hasattr(self, 'duration_minutes'):
+			if self.duration_minutes < 30:
+				raise ValidationError("Reservation duration must be at least 30 minutes.")
+			if self.duration_minutes > 480:  # 8 hours max
+				raise ValidationError("Reservation duration cannot exceed 8 hours.")
+	
+	def save(self, *args, **kwargs):
+		"""Override save to run validation."""
+		self.full_clean()
+		super().save(*args, **kwargs)
+	
+	@classmethod
+	def find_available_slots(cls, table, start_datetime, end_datetime, duration_minutes=120, slot_interval_minutes=30):
+		"""
+		Find available reservation time slots for a specific table within a date/time range.
+		
+		This method efficiently identifies time slots where the table is not already reserved,
+		taking into account existing reservations and their durations.
+		
+		Args:
+			table: Table instance to check availability for
+			start_datetime: Start of the search range (datetime object)
+			end_datetime: End of the search range (datetime object)
+			duration_minutes: Duration of the desired reservation (default: 120 minutes)
+			slot_interval_minutes: Interval between potential slots (default: 30 minutes)
+		
+		Returns:
+			List of dictionaries containing available slots with start and end times:
+			[
+				{
+					'start_time': datetime object,
+					'end_time': datetime object,
+					'formatted_start': '2025-01-15 18:00',
+					'formatted_end': '2025-01-15 20:00'
+				},
+				...
+			]
+		
+		Example:
+			>>> from datetime import datetime
+			>>> from django.utils import timezone
+			>>> table = Table.objects.get(number=5)
+			>>> start = timezone.make_aware(datetime(2025, 1, 15, 17, 0))
+			>>> end = timezone.make_aware(datetime(2025, 1, 15, 22, 0))
+			>>> slots = Reservation.find_available_slots(table, start, end, duration_minutes=120)
+			>>> print(slots)
+			[
+				{'start_time': datetime(...), 'end_time': datetime(...), ...},
+				...
+			]
+		"""
+		# Ensure we're working with aware datetimes
+		if timezone.is_naive(start_datetime):
+			start_datetime = timezone.make_aware(start_datetime)
+		if timezone.is_naive(end_datetime):
+			end_datetime = timezone.make_aware(end_datetime)
+		
+		# Don't allow searching for slots in the past
+		now = timezone.now()
+		if start_datetime < now:
+			start_datetime = now
+		
+		# If the entire range is in the past, return empty list
+		if end_datetime <= now:
+			return []
+		
+		# Get all confirmed/pending reservations for this table in the date range
+		# Expand the date range by one day on each side to catch reservations that
+		# start the previous day but extend into our search window (overnight overlaps)
+		search_start_date = start_datetime.date() - timedelta(days=1)
+		search_end_date = end_datetime.date() + timedelta(days=1)
+		
+		existing_reservations = cls.objects.filter(
+			table=table,
+			reservation_date__gte=search_start_date,
+			reservation_date__lte=search_end_date,
+			status__in=['pending', 'confirmed']
+		).select_related('table')
+		
+		# Build a list of occupied time ranges
+		occupied_ranges = []
+		for reservation in existing_reservations:
+			res_start = reservation.reservation_datetime
+			res_end = reservation.end_datetime
+			occupied_ranges.append((res_start, res_end))
+		
+		# Generate potential time slots
+		available_slots = []
+		current_slot_start = start_datetime
+		slot_duration = timedelta(minutes=duration_minutes)
+		slot_interval = timedelta(minutes=slot_interval_minutes)
+		
+		while current_slot_start + slot_duration <= end_datetime:
+			slot_end = current_slot_start + slot_duration
+			
+			# Check if this slot overlaps with any existing reservation
+			is_available = True
+			for occupied_start, occupied_end in occupied_ranges:
+				# Check for overlap: slot overlaps if it starts before occupied ends
+				# and ends after occupied starts
+				if (current_slot_start < occupied_end and slot_end > occupied_start):
+					is_available = False
+					break
+			
+			if is_available:
+				available_slots.append({
+					'start_time': current_slot_start,
+					'end_time': slot_end,
+					'formatted_start': current_slot_start.strftime('%Y-%m-%d %H:%M'),
+					'formatted_end': slot_end.strftime('%Y-%m-%d %H:%M'),
+				})
+			
+			# Move to next potential slot
+			current_slot_start += slot_interval
+		
+		return available_slots

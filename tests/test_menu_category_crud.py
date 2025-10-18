@@ -219,3 +219,55 @@ class MenuCategoryCRUDTestCase(TestCase):
         response = self.client.delete(detail_url)
         
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    
+    def test_create_category_with_description(self):
+        """Test creating a category with optional description field."""
+        self.client.force_authenticate(user=self.user)
+        
+        data = {
+            'name': 'Beverages',
+            'description': 'Refreshing drinks including sodas, juices, and specialty beverages'
+        }
+        response = self.client.post(self.list_url, data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['name'], 'Beverages')
+        self.assertEqual(response.data['description'], 'Refreshing drinks including sodas, juices, and specialty beverages')
+        
+        # Verify in database
+        category = MenuCategory.objects.get(name='Beverages')
+        self.assertEqual(category.description, 'Refreshing drinks including sodas, juices, and specialty beverages')
+    
+    def test_create_category_without_description(self):
+        """Test creating a category without description (optional field)."""
+        self.client.force_authenticate(user=self.user)
+        
+        data = {'name': 'Sides'}
+        response = self.client.post(self.list_url, data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['name'], 'Sides')
+        self.assertEqual(response.data['description'], '')  # Should be empty string
+        
+        # Verify in database
+        category = MenuCategory.objects.get(name='Sides')
+        self.assertEqual(category.description, '')
+    
+    def test_update_category_description(self):
+        """Test updating a category's description."""
+        self.client.force_authenticate(user=self.user)
+        
+        detail_url = reverse('menucategory-detail', kwargs={'pk': self.category1.pk})
+        data = {
+            'name': 'Appetizers',
+            'description': 'Delicious starters to begin your meal'
+        }
+        response = self.client.put(detail_url, data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['description'], 'Delicious starters to begin your meal')
+        
+        # Verify in database
+        self.category1.refresh_from_db()
+        self.assertEqual(self.category1.description, 'Delicious starters to begin your meal')
+

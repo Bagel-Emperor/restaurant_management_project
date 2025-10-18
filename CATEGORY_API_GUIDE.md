@@ -21,11 +21,13 @@ GET /PerpexBistro/api/menu-categories/
 [
     {
         "id": 1,
-        "name": "Appetizers"
+        "name": "Appetizers",
+        "description": "Delicious starters to begin your meal"
     },
     {
         "id": 2,
-        "name": "Desserts"
+        "name": "Desserts",
+        "description": "Sweet treats to finish your dining experience"
     },
     {
         "id": 3,
@@ -47,7 +49,8 @@ GET /PerpexBistro/api/menu-categories/{id}/
 ```json
 {
     "id": 1,
-    "name": "Appetizers"
+    "name": "Appetizers",
+    "description": "Delicious starters to begin your meal"
 }
 ```
 
@@ -63,15 +66,19 @@ POST /PerpexBistro/api/menu-categories/
 **Request Body**:
 ```json
 {
-    "name": "Beverages"
+    "name": "Beverages",
+    "description": "Refreshing drinks including sodas, juices, and specialty beverages"
 }
 ```
+
+**Note**: The `description` field is optional and can be omitted.
 
 **Response Example** (201 Created):
 ```json
 {
     "id": 4,
-    "name": "Beverages"
+    "name": "Beverages",
+    "description": "Refreshing drinks including sodas, juices, and specialty beverages"
 }
 ```
 
@@ -92,7 +99,8 @@ PATCH /PerpexBistro/api/menu-categories/{id}/
 **Request Body**:
 ```json
 {
-    "name": "Drinks & Beverages"
+    "name": "Drinks & Beverages",
+    "description": "All types of beverages from soft drinks to specialty coffee"
 }
 ```
 
@@ -100,7 +108,8 @@ PATCH /PerpexBistro/api/menu-categories/{id}/
 ```json
 {
     "id": 4,
-    "name": "Drinks & Beverages"
+    "name": "Drinks & Beverages",
+    "description": "All types of beverages from soft drinks to specialty coffee"
 }
 ```
 

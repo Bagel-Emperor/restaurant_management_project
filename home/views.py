@@ -301,6 +301,132 @@ class MenuItemViewSet(viewsets.ModelViewSet):
                 {'error': 'Unable to toggle availability'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+    
+    @action(detail=True, methods=['patch'], permission_classes=[permissions.IsAdminUser])
+    def update_availability(self, request, pk=None):
+        """
+        Custom action to update the availability of a menu item to a specific value.
+        
+        This endpoint allows explicitly setting the availability status to true or false,
+        unlike toggle_availability which just flips the current state.
+        
+        PATCH /api/menu-items/{id}/update_availability/
+        
+        Request Body:
+            {
+                "is_available": true  // or false
+            }
+        
+        Returns:
+            Success: {
+                "success": true,
+                "message": "Menu item availability updated successfully",
+                "menu_item": {menu_item_data}
+            }
+            
+            Failure: {
+                "success": false,
+                "error": "Error message"
+            }
+        
+        Error Handling:
+            - 400: Missing or invalid is_available field
+            - 404: Menu item not found
+            - 500: Server error during update
+        """
+        try:
+            # Validate that is_available field is present
+            if 'is_available' not in request.data:
+                logger.warning(f"Update availability attempt for menu item {pk} without is_available field")
+                return Response(
+                    {
+                        'success': False,
+                        'error': 'is_available field is required'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Get the is_available value
+            is_available = request.data.get('is_available')
+            
+            # Validate that is_available is a boolean
+            if not isinstance(is_available, bool):
+                # Handle string representations of boolean
+                if isinstance(is_available, str):
+                    is_available_lower = is_available.lower()
+                    if is_available_lower == 'true':
+                        is_available = True
+                    elif is_available_lower == 'false':
+                        is_available = False
+                    else:
+                        logger.warning(
+                            f"Invalid is_available value for menu item {pk}: {is_available}"
+                        )
+                        return Response(
+                            {
+                                'success': False,
+                                'error': 'is_available must be a boolean (true or false)'
+                            },
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                else:
+                    logger.warning(
+                        f"Invalid is_available type for menu item {pk}: {type(is_available)}"
+                    )
+                    return Response(
+                        {
+                            'success': False,
+                            'error': 'is_available must be a boolean (true or false)'
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            
+            # Get the menu item
+            menu_item = self.get_object()
+            
+            # Store old value for logging
+            old_value = menu_item.is_available
+            
+            # Update availability
+            menu_item.is_available = is_available
+            menu_item.save()
+            
+            # Log the change
+            status_text = "available" if is_available else "unavailable"
+            logger.info(
+                f"Menu item '{menu_item.name}' (ID: {menu_item.id}) availability updated "
+                f"from {old_value} to {is_available} by user {request.user.username}"
+            )
+            
+            # Serialize and return
+            serializer = self.get_serializer(menu_item)
+            return Response(
+                {
+                    'success': True,
+                    'message': f'Menu item availability updated successfully. Item is now {status_text}.',
+                    'menu_item': serializer.data
+                },
+                status=status.HTTP_200_OK
+            )
+            
+        except MenuItem.DoesNotExist:
+            logger.error(f"Menu item with ID {pk} not found")
+            return Response(
+                {
+                    'success': False,
+                    'error': 'Menu item not found'
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error updating menu item availability for ID {pk}: {str(e)}")
+            return Response(
+                {
+                    'success': False,
+                    'error': 'Unable to update availability. Please try again later.'
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 def feedback_view(request):
     """

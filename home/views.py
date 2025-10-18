@@ -695,6 +695,110 @@ def update_restaurant(request, pk):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['GET'])
+def restaurant_info(request):
+    """
+    Retrieve comprehensive information about the restaurant.
+    
+    Returns all relevant information including name, address, phone number,
+    opening hours, and other important details about the restaurant.
+    
+    This endpoint is designed to provide complete information about the main
+    restaurant (Perpex Bistro) for display on the frontend or mobile apps.
+    
+    GET /api/restaurant-info/
+    
+    Returns:
+        200 OK: {
+            "success": true,
+            "restaurant": {
+                "id": 1,
+                "name": "Perpex Bistro",
+                "owner_name": "John Doe",
+                "email": "contact@perpexbistro.com",
+                "phone_number": "555-0100",
+                "opening_hours": {
+                    "Monday": "9:00 AM - 10:00 PM",
+                    "Tuesday": "9:00 AM - 10:00 PM",
+                    ...
+                },
+                "address": "123 Main Street",
+                "city": "New York",
+                "state": "NY",
+                "zip_code": "10001",
+                "full_address": "123 Main Street, New York, NY 10001",
+                "created_at": "2025-01-01T00:00:00Z"
+            }
+        }
+        
+        404 Not Found: {
+            "success": false,
+            "error": "Restaurant information not found. Please contact support."
+        }
+        
+        500 Internal Server Error: {
+            "success": false,
+            "error": "Unable to retrieve restaurant information. Please try again later."
+        }
+    
+    Features:
+    - Public endpoint (no authentication required)
+    - Returns the first restaurant in the database (main restaurant)
+    - Includes location details from RestaurantLocation model
+    - Properly formatted opening hours JSON
+    - Full address string for easy display
+    - Comprehensive error handling
+    - Logging for debugging
+    
+    Usage Example:
+        response = requests.get('http://localhost:8000/PerpexBistro/api/restaurant-info/')
+        data = response.json()
+        if data['success']:
+            restaurant = data['restaurant']
+            print(f"Name: {restaurant['name']}")
+            print(f"Phone: {restaurant['phone_number']}")
+            print(f"Address: {restaurant['full_address']}")
+    """
+    try:
+        # Get the first/main restaurant
+        # In a single-restaurant setup, this returns the main restaurant
+        restaurant = Restaurant.objects.select_related('location').first()
+        
+        if not restaurant:
+            logger.warning("Restaurant information requested but no restaurant exists in database")
+            return Response(
+                {
+                    'success': False,
+                    'error': 'Restaurant information not found. Please contact support.'
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Serialize the restaurant data
+        from .serializers import RestaurantInfoSerializer
+        serializer = RestaurantInfoSerializer(restaurant)
+        
+        logger.info(f"Restaurant information retrieved successfully for: {restaurant.name}")
+        
+        return Response(
+            {
+                'success': True,
+                'restaurant': serializer.data
+            },
+            status=status.HTTP_200_OK
+        )
+        
+    except Exception as e:
+        logger.error(f"Error retrieving restaurant information: {str(e)}")
+        return Response(
+            {
+                'success': False,
+                'error': 'Unable to retrieve restaurant information. Please try again later.'
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
 # =============================================================================
 # Shopping Cart API Endpoints
 # =============================================================================

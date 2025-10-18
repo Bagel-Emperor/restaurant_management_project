@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     home_view, about_view, contact_view, menu_view, reservations_view, feedback_view, faq_view,
     create_restaurant, list_restaurants, get_restaurant, update_restaurant, delete_restaurant,
+    restaurant_info,
     create_menu_item, list_menu_items, get_menu_item, update_menu_item, delete_menu_item,
     MenuCategoryViewSet, MenuItemViewSet, DailySpecialsAPIView, UserReviewViewSet,
     # Cart API views
@@ -43,6 +44,9 @@ urlpatterns = [
     path('api/restaurants/<int:pk>/', get_restaurant, name='restaurant-detail'),
     path('api/restaurants/<int:pk>/update/', update_restaurant, name='restaurant-update'),
     path('api/restaurants/<int:pk>/delete/', delete_restaurant, name='restaurant-delete'),
+    
+    # API endpoint for comprehensive restaurant information
+    path('api/restaurant-info/', restaurant_info, name='restaurant-info'),
 
     # API endpoint for daily specials
     path('api/daily-specials/', DailySpecialsAPIView.as_view(), name='daily-specials'),

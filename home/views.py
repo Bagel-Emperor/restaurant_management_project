@@ -331,9 +331,12 @@ class MenuItemViewSet(viewsets.ModelViewSet):
         
         Error Handling:
             - 400: Missing or invalid is_available field
-            - 404: Menu item not found
+            - 404: Menu item not found (raised by get_object())
             - 500: Server error during update
         """
+        # Error message constant to avoid duplication
+        INVALID_BOOLEAN_ERROR = 'is_available must be a boolean (true or false)'
+        
         try:
             # Validate that is_available field is present
             if 'is_available' not in request.data:
@@ -365,7 +368,7 @@ class MenuItemViewSet(viewsets.ModelViewSet):
                         return Response(
                             {
                                 'success': False,
-                                'error': 'is_available must be a boolean (true or false)'
+                                'error': INVALID_BOOLEAN_ERROR
                             },
                             status=status.HTTP_400_BAD_REQUEST
                         )
@@ -376,12 +379,12 @@ class MenuItemViewSet(viewsets.ModelViewSet):
                     return Response(
                         {
                             'success': False,
-                            'error': 'is_available must be a boolean (true or false)'
+                            'error': INVALID_BOOLEAN_ERROR
                         },
                         status=status.HTTP_400_BAD_REQUEST
                     )
             
-            # Get the menu item
+            # Get the menu item (raises Http404 if not found, handled by DRF)
             menu_item = self.get_object()
             
             # Store old value for logging
@@ -409,16 +412,8 @@ class MenuItemViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_200_OK
             )
             
-        except MenuItem.DoesNotExist:
-            logger.error(f"Menu item with ID {pk} not found")
-            return Response(
-                {
-                    'success': False,
-                    'error': 'Menu item not found'
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
         except Exception as e:
+            # Catch any unexpected errors (get_object() Http404 is handled by DRF)
             logger.error(f"Error updating menu item availability for ID {pk}: {str(e)}")
             return Response(
                 {

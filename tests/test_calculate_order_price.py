@@ -238,3 +238,22 @@ class CalculateOrderPriceTestCase(TestCase):
         # Total = 48.97
         result = calculate_order_price(items)
         self.assertEqual(result, Decimal('48.97'))
+    
+    def test_calculate_price_decimal_quantity_raises_error(self):
+        """Test that non-whole number quantity raises TypeError."""
+        items = [{'quantity': 2.5, 'price': Decimal('10.00')}]
+        
+        with self.assertRaises(TypeError) as context:
+            calculate_order_price(items)
+        
+        self.assertIn('whole number', str(context.exception).lower())
+    
+    def test_calculate_price_whole_number_float_quantity_works(self):
+        """Test that whole number floats (like 2.0) are accepted."""
+        items = [
+            {'quantity': 2.0, 'price': Decimal('10.00')},  # 2.0 is a whole number
+            {'quantity': 3.0, 'price': Decimal('5.00')}    # 3.0 is a whole number
+        ]
+        
+        result = calculate_order_price(items)
+        self.assertEqual(result, Decimal('35.00'))

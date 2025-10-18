@@ -705,7 +705,14 @@ def calculate_order_price(order_items: list) -> Decimal:
             # Convert to appropriate numeric types
             # Handle int, float, Decimal, or string representations
             try:
-                if not isinstance(quantity, (int, Decimal)):
+                # Validate that quantity is a whole number before conversion
+                if not isinstance(quantity, int):
+                    # Check if it's a float/Decimal that's actually a whole number
+                    if isinstance(quantity, (float, Decimal)):
+                        if quantity != int(quantity):
+                            raise ValueError(
+                                f"Quantity must be a whole number, got {quantity}"
+                            )
                     quantity = int(quantity)
                 
                 if not isinstance(price, Decimal):
@@ -731,7 +738,8 @@ def calculate_order_price(order_items: list) -> Decimal:
                 )
             
             # Calculate item total and add to running total
-            item_total = Decimal(str(quantity)) * price
+            # Decimal handles multiplication with int natively, no conversion needed
+            item_total = quantity * price
             total += item_total
             
         except (TypeError, ValueError) as e:

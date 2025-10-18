@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
-from .models import Restaurant, MenuItem, MenuCategory, ContactSubmission, Table, UserReview
+from .models import Restaurant, RestaurantLocation, MenuItem, MenuCategory, ContactSubmission, Table, UserReview
 
 # Serializer for MenuCategory
 class MenuCategorySerializer(serializers.ModelSerializer):
@@ -23,6 +23,71 @@ class RestaurantSerializer(serializers.ModelSerializer):
             'created_at',
         ]
         read_only_fields = ['created_at']
+
+
+class RestaurantInfoSerializer(serializers.ModelSerializer):
+    """
+    Comprehensive serializer for restaurant information.
+    
+    Includes all relevant details about the restaurant including location data
+    and opening hours. Designed for the restaurant-info endpoint that provides
+    complete information about the restaurant.
+    """
+    # Include location fields from RestaurantLocation model
+    address = serializers.SerializerMethodField()
+    city = serializers.SerializerMethodField()
+    state = serializers.SerializerMethodField()
+    zip_code = serializers.SerializerMethodField()
+    full_address = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Restaurant
+        fields = [
+            'id',
+            'name',
+            'owner_name',
+            'email',
+            'phone_number',
+            'opening_hours',
+            'address',
+            'city',
+            'state',
+            'zip_code',
+            'full_address',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'created_at']
+    
+    def get_address(self, obj):
+        """Get street address from related RestaurantLocation."""
+        if hasattr(obj, 'location') and obj.location:
+            return obj.location.address
+        return None
+    
+    def get_city(self, obj):
+        """Get city from related RestaurantLocation."""
+        if hasattr(obj, 'location') and obj.location:
+            return obj.location.city
+        return None
+    
+    def get_state(self, obj):
+        """Get state from related RestaurantLocation."""
+        if hasattr(obj, 'location') and obj.location:
+            return obj.location.state
+        return None
+    
+    def get_zip_code(self, obj):
+        """Get zip code from related RestaurantLocation."""
+        if hasattr(obj, 'location') and obj.location:
+            return obj.location.zip_code
+        return None
+    
+    def get_full_address(self, obj):
+        """Get formatted full address string."""
+        if hasattr(obj, 'location') and obj.location:
+            location = obj.location
+            return f"{location.address}, {location.city}, {location.state} {location.zip_code}"
+        return None
 
 class MenuItemSerializer(serializers.ModelSerializer):
     """

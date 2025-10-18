@@ -593,3 +593,163 @@ def get_daily_sales_total(target_date: date) -> Decimal:
         logger = logging.getLogger(__name__)
         logger.error(f"Error calculating daily sales total for {target_date}: {e}", exc_info=True)
         return Decimal('0.00')
+
+
+# ================================
+# ORDER PRICE CALCULATION
+# ================================
+
+def calculate_order_price(order_items: list) -> Decimal:
+    """
+    Calculate the total price of an order from a list of order items.
+    
+    This is a generic, reusable utility function that calculates the total cost
+    by summing (quantity × price) for each item. It can be used for:
+    - Shopping cart total calculation
+    - Order price calculation
+    - Quote/estimate generation
+    - Invoice total calculation
+    - Any scenario requiring item-based price calculation
+    
+    Args:
+        order_items (list): List of items, where each item is either:
+            - Dictionary with 'quantity' and 'price' keys
+            - Object with quantity and price attributes
+            
+            Examples:
+                [
+                    {'quantity': 2, 'price': Decimal('12.99')},
+                    {'quantity': 1, 'price': Decimal('8.50')}
+                ]
+                
+                or
+                
+                [
+                    OrderItem(quantity=2, price=Decimal('12.99')),
+                    OrderItem(quantity=1, price=Decimal('8.50'))
+                ]
+    
+    Returns:
+        Decimal: Total price with 2 decimal places (cent precision).
+                Returns Decimal('0.00') for empty lists or invalid input.
+    
+    Raises:
+        ValueError: If any item has negative quantity or price
+        TypeError: If items don't have required quantity/price fields
+    
+    Validation:
+        - Ensures quantity and price are non-negative
+        - Validates numeric types (int, float, Decimal)
+        - Converts floats to Decimal for precision
+        - Handles edge cases (empty list, None values)
+    
+    Examples:
+        >>> # Calculate cart total
+        >>> items = [
+        ...     {'quantity': 2, 'price': Decimal('12.99')},
+        ...     {'quantity': 1, 'price': Decimal('8.50')}
+        ... ]
+        >>> total = calculate_order_price(items)
+        >>> print(total)
+        Decimal('34.48')
+        
+        >>> # Empty cart
+        >>> calculate_order_price([])
+        Decimal('0.00')
+        
+        >>> # With OrderItem objects
+        >>> order_items = order.order_items.all()
+        >>> total = calculate_order_price(order_items)
+    
+    Notes:
+        - Uses Decimal for financial precision (no floating-point errors)
+        - Returns 0.00 for empty lists (graceful handling)
+        - Thread-safe and side-effect free (pure function)
+        - Efficient for any list size
+        - All prices quantized to 2 decimal places
+    
+    Performance:
+        - O(n) time complexity where n is number of items
+        - Minimal memory overhead
+        - Single pass through items
+    """
+    # Handle empty list gracefully
+    if not order_items:
+        return Decimal('0.00')
+    
+    # Initialize total
+    total = Decimal('0.00')
+    
+    # Get logger for error reporting
+    logger = logging.getLogger(__name__)
+    
+    # Process each item
+    for index, item in enumerate(order_items):
+        try:
+            # Extract quantity and price (support both dict and object access)
+            if isinstance(item, dict):
+                quantity = item.get('quantity')
+                price = item.get('price')
+            else:
+                # Object with attributes
+                quantity = getattr(item, 'quantity', None)
+                price = getattr(item, 'price', None)
+            
+            # Validate quantity and price exist
+            if quantity is None or price is None:
+                raise TypeError(
+                    f"Item at index {index} missing required 'quantity' or 'price' field. "
+                    f"Item: {item}"
+                )
+            
+            # Convert to appropriate numeric types
+            # Handle int, float, Decimal, or string representations
+            try:
+                if not isinstance(quantity, (int, Decimal)):
+                    quantity = int(quantity)
+                
+                if not isinstance(price, Decimal):
+                    # Convert float/int/string to Decimal for precision
+                    price = Decimal(str(price))
+            except (ValueError, TypeError) as e:
+                raise TypeError(
+                    f"Item at index {index} has invalid quantity or price type. "
+                    f"quantity={quantity}, price={price}. Error: {e}"
+                )
+            
+            # Validate non-negative values
+            if quantity < 0:
+                raise ValueError(
+                    f"Item at index {index} has negative quantity: {quantity}. "
+                    f"Quantity must be non-negative."
+                )
+            
+            if price < 0:
+                raise ValueError(
+                    f"Item at index {index} has negative price: {price}. "
+                    f"Price must be non-negative."
+                )
+            
+            # Calculate item total and add to running total
+            item_total = Decimal(str(quantity)) * price
+            total += item_total
+            
+        except (TypeError, ValueError) as e:
+            # Re-raise validation errors with context
+            logger.error(f"Error calculating price for item at index {index}: {e}")
+            raise
+        except Exception as e:
+            # Catch unexpected errors and provide helpful message
+            logger.error(
+                f"Unexpected error processing item at index {index}: {e}",
+                exc_info=True
+            )
+            raise TypeError(
+                f"Failed to process item at index {index}: {item}. Error: {e}"
+            )
+    
+    # Ensure result has exactly 2 decimal places (cent precision)
+    # This is important for financial calculations
+    total = total.quantize(Decimal('0.01'))
+    
+    return total

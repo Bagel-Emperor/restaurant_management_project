@@ -27,7 +27,14 @@ class Reservation(models.Model):
     special_requests = models.TextField(blank=True)
     
     # Optional User Link
-    user = models.ForeignKey(User, null=True, blank=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reservations',
+        help_text="Linked user account (if registered)"
+    )
 ```
 
 ### Status Choices
@@ -46,7 +53,7 @@ The model automatically prevents reservations in the past:
 
 ```python
 from django.utils import timezone
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
 # This will raise ValidationError
 reservation = Reservation.objects.create(

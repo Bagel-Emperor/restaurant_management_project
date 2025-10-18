@@ -15,7 +15,8 @@ from django.test import TestCase
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.contrib.auth.models import User
-from datetime import datetime, timedelta, time, date
+from django.db import IntegrityError
+from datetime import datetime, timedelta, time
 from home.models import Reservation, Table, Restaurant
 
 
@@ -131,7 +132,7 @@ class ReservationModelTestCase(TestCase):
 	def test_is_past_property(self):
 		"""Test is_past property for past reservations."""
 		past_date = timezone.now() - timedelta(days=1)
-		# Note: This will fail validation, so we need to bypass it
+		# Note: This will fail validation, so we create without saving
 		reservation = Reservation(
 			customer_name="Past Customer",
 			customer_email="past@example.com",
@@ -141,8 +142,6 @@ class ReservationModelTestCase(TestCase):
 			reservation_date=past_date.date(),
 			reservation_time=time(12, 0),
 		)
-		# Save without validation
-		reservation.save = lambda: super(Reservation, reservation).save()
 		
 		# Just test the property logic without saving
 		self.assertTrue(reservation.is_past)
@@ -267,7 +266,7 @@ class ReservationModelTestCase(TestCase):
 		
 		# Attempt to create second reservation at same time
 		# Should raise ValidationError from full_clean() or IntegrityError from database
-		with self.assertRaises((ValidationError, Exception)):
+		with self.assertRaises((ValidationError, IntegrityError)):
 			Reservation.objects.create(
 				customer_name="Second Customer",
 				customer_email="second@example.com",

@@ -324,7 +324,7 @@ class Reservation(models.Model):
 			models.Index(fields=['user']),
 		]
 		constraints = [
-			# Prevent double-booking: same table can't have overlapping reservations
+			# Prevent same table being reserved at exact same date and start time
 			models.UniqueConstraint(
 				fields=['table', 'reservation_date', 'reservation_time'],
 				name='unique_table_datetime'
@@ -444,9 +444,10 @@ class Reservation(models.Model):
 			return []
 		
 		# Get all confirmed/pending reservations for this table in the date range
-		# We need to expand the range to account for reservation durations
-		search_start_date = start_datetime.date()
-		search_end_date = end_datetime.date()
+		# Expand the date range by one day on each side to catch reservations that
+		# start the previous day but extend into our search window (overnight overlaps)
+		search_start_date = start_datetime.date() - timedelta(days=1)
+		search_end_date = end_datetime.date() + timedelta(days=1)
 		
 		existing_reservations = cls.objects.filter(
 			table=table,

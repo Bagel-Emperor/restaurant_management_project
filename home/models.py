@@ -69,6 +69,7 @@ class MenuCategory(models.Model):
 	Represents a category for menu items (e.g., Appetizers, Main Courses, Desserts).
 	"""
 	name = models.CharField(max_length=100, unique=True)
+	description = models.TextField(blank=True, help_text="Optional description of the category")
 
 	def __str__(self):
 		return self.name

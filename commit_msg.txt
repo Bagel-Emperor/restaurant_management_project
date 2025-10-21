@@ -1,0 +1,93 @@
+feat: add driver earnings and availability serializers (Tasks 12A, 13A)
+
+Summary
+=======
+Implemented serializers to expose driver earnings summary and availability toggle functionality for the driver portal.
+
+Task 12A: DriverEarningsSerializer
+===================================
+Features:
+- Weekly earnings summary: Aggregates driver's completed, paid rides from last 7 days
+- Total rides count: Counts qualifying rides
+- Total earnings: Sums fare amounts using Django aggregation
+- Payment breakdown: Groups rides by method (CASH/UPI/CARD) and counts each
+- Average fare: Calculates mean fare with proper Decimal rounding to 2 places
+
+Implementation Details:
+- Uses SerializerMethodField for computed values
+- Filters: driver, status=COMPLETED, payment_status=PAID, completed_at >= 7 days ago
+- Decimal handling: quantize(Decimal('0.01')) for financial precision
+- Handles None/empty results gracefully (returns 0.00 instead of None)
+- Payment breakdown dict initialized with all 3 methods at 0 count
+
+Use Case:
+Driver dashboard showing: '18 rides completed, Rs.4,850 earned (Rs.269.44 avg), 8 CASH/6 UPI/4 CARD'
+
+Task 13A: DriverAvailabilitySerializer
+=======================================
+Features:
+- Boolean toggle interface: Clean is_available field for API requests
+- Status mapping: Converts True -> 'available', False -> 'offline'
+- Read-only status: Returns current availability_status in responses
+- Comprehensive validation: Checks authentication and driver profile existence
+
+Implementation Details:
+- Fields: is_available (BooleanField, required), availability_status (CharField, read-only)
+- validate(): Multi-check validation (request exists, user exists, authenticated, has driver_profile)
+- save(): Maps boolean to Driver.STATUS_AVAILABLE or Driver.STATUS_OFFLINE
+- to_representation(): Converts status back to boolean for clean API responses
+- Uses context={'request': request} pattern to access authenticated user
+
+Use Case:
+Driver app toggle: 'Go Online' button sends {"is_available": true}, updates to 'available', 
+returns {"is_available": true, "availability_status": "available"}
+
+Tests
+=====
+Added 15 comprehensive tests in test_driver_earnings_availability.py:
+
+DriverEarningsSerializer Tests (9):
+- No rides scenario (all values = 0)
+- Single ride calculation
+- Multiple rides with different payment methods
+- Filters only COMPLETED rides (excludes REQUESTED, CANCELLED)
+- Filters only PAID rides (excludes UNPAID)
+- 7-day time window (excludes older rides)
+- Average fare rounding to 2 decimals
+- Realistic scenario: 18 rides, 3 methods, proper aggregation
+
+DriverAvailabilitySerializer Tests (7):
+- Toggle offline to available (False to True)
+- Toggle available to offline (True to False)
+- Rejects unauthenticated requests (request.user is None)
+- Rejects users without driver profile
+- Requires is_available field
+- Multiple sequential toggles
+- to_representation() reflects current status correctly
+
+Code Quality
+============
+- Decimal precision: All financial calculations use Decimal type
+- Django best practices: Uses ORM aggregation (Sum, Avg, Count)
+- Comprehensive docstrings: All methods documented with args, returns, use cases
+- Edge case handling: None checks, empty querysets, authentication edge cases
+- Test coverage: 15 tests covering happy paths and error cases
+
+Technical Improvements
+======================
+- Fixed authentication check bug: Added hasattr(request, 'user') before accessing request.user
+- Properly handles None user attribute (AttributeError: 'NoneType' object has no attribute 'is_authenticated')
+- All 15 tests passing
+
+Related Work
+============
+- Uses simplified Driver.availability_status (offline/available only) from previous commit
+- Relies on Ride model fields: fare, status, payment_status, payment_method, completed_at
+- Foundation for upcoming views (Tasks 12B, 13B)
+
+Next Steps
+==========
+- Task 12B: Create GET view for /api/driver/earnings/
+- Task 13B: Create POST view for /api/driver/availability/
+- Add URL patterns for both endpoints
+- Integration tests for full request/response flow

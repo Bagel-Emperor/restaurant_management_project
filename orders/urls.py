@@ -24,7 +24,10 @@ from .views import (
     get_order_status,  # New: Order status retrieval endpoint
     # Task 10B & 11B: Fare calculation and payment views
     calculate_fare,
-    mark_ride_as_paid
+    mark_ride_as_paid,
+    # Task 12B & 13B: Driver earnings and availability views
+    DriverEarningsSummaryView,
+    DriverAvailabilityToggleView
 )
 from .jwt_views import (
     CustomTokenObtainPairView,
@@ -77,6 +80,12 @@ urlpatterns = [
     
     # Task 11B: Mark ride as paid
     path('ride/payment/<int:ride_id>/', mark_ride_as_paid, name='mark-ride-paid'),
+    
+    # Task 12B: Driver earnings summary
+    path('driver/earnings/', DriverEarningsSummaryView.as_view(), name='driver-earnings'),
+    
+    # Task 13B: Driver availability toggle
+    path('driver/availability/', DriverAvailabilityToggleView.as_view(), name='driver-availability'),
     
     # JWT Authentication endpoints (custom views with enhanced features)
     path('auth/login/', jwt_login, name='jwt-login'),

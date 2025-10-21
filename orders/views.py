@@ -15,7 +15,8 @@ from .serializers import (
     OrderSerializer, CustomerSerializer, OrderHistorySerializer, 
     UserProfileSerializer, OrderDetailSerializer, RideSerializer, 
     RideRequestSerializer, UpdateOrderStatusSerializer,
-    FareCalculationSerializer, RidePaymentSerializer
+    FareCalculationSerializer, RidePaymentSerializer,
+    DriverEarningsSerializer, DriverAvailabilitySerializer
 )
 from .choices import OrderStatusChoices
 import logging
@@ -1744,3 +1745,149 @@ def mark_ride_as_paid(request, ride_id):
 	# Return validation errors
 	logger.info(f"Invalid payment data for ride {ride_id}: {serializer.errors}")
 	return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ================================
+# DRIVER EARNINGS SUMMARY VIEW (TASK 12B)
+# ================================
+
+class DriverEarningsSummaryView(APIView):
+	"""
+	API view to retrieve driver's earnings summary for the last 7 days.
+	
+	GET /api/driver/earnings/
+	
+	Requires JWT authentication and a driver profile. Returns comprehensive
+	earnings data including total rides, total earnings, payment method breakdown,
+	and average fare for completed, paid rides from the last 7 days.
+	
+	Response (Success):
+		{
+			"total_rides": 18,
+			"total_earnings": "4850.00",
+			"payment_breakdown": {
+				"CASH": 8,
+				"UPI": 6,
+				"CARD": 4
+			},
+			"average_fare": "269.44"
+		}
+	
+	Response (Error - No Driver Profile):
+		{
+			"success": false,
+			"message": "User does not have a driver profile",
+			"error_code": "NO_DRIVER_PROFILE"
+		}
+	"""
+	
+	permission_classes = [permissions.IsAuthenticated]
+	
+	def get(self, request):
+		"""Retrieve driver's earnings summary for the last 7 days."""
+		try:
+			# Verify user has a driver profile
+			try:
+				driver = request.user.driver_profile
+			except AttributeError:
+				logger.warning(f"User {request.user.username} attempted to access earnings without driver profile")
+				return Response({
+					'success': False,
+					'message': 'User does not have a driver profile',
+					'error_code': 'NO_DRIVER_PROFILE'
+				}, status=status.HTTP_403_FORBIDDEN)
+			
+			# Serialize driver's earnings data
+			serializer = DriverEarningsSerializer(driver)
+			
+			logger.info(f"Driver {driver.user.username} retrieved earnings summary")
+			
+			return Response(serializer.data, status=status.HTTP_200_OK)
+			
+		except Exception as e:
+			logger.error(f"Error retrieving earnings for user {request.user.username}: {str(e)}")
+			return Response({
+				'success': False,
+				'message': 'An error occurred while retrieving earnings summary',
+				'error_code': 'INTERNAL_ERROR'
+			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ================================
+# DRIVER AVAILABILITY TOGGLE VIEW (TASK 13B)
+# ================================
+
+class DriverAvailabilityToggleView(APIView):
+	"""
+	API view for drivers to toggle their availability status.
+	
+	POST /api/driver/availability/
+	
+	Requires JWT authentication and a driver profile. Allows drivers to go
+	online (available) or offline. Updates the driver's availability_status
+	in the database and returns the updated status.
+	
+	Request Body:
+		{
+			"is_available": true
+		}
+	
+	Response (Success - Going Online):
+		{
+			"is_available": true,
+			"availability_status": "available"
+		}
+	
+	Response (Success - Going Offline):
+		{
+			"is_available": false,
+			"availability_status": "offline"
+		}
+	
+	Response (Error - No Driver Profile):
+		{
+			"success": false,
+			"message": "User does not have a driver profile. Only drivers can update availability.",
+			"error_code": "NO_DRIVER_PROFILE"
+		}
+	
+	Response (Error - Missing Field):
+		{
+			"is_available": ["This field is required."]
+		}
+	"""
+	
+	permission_classes = [permissions.IsAuthenticated]
+	
+	def post(self, request):
+		"""Toggle driver's availability status."""
+		try:
+			# Serialize and validate the request data
+			serializer = DriverAvailabilitySerializer(
+				data=request.data,
+				context={'request': request}
+			)
+			
+			if serializer.is_valid():
+				# Save the updated availability status
+				driver = serializer.save()
+				
+				# Get the response representation
+				response_data = serializer.to_representation(driver)
+				
+				action = "online" if response_data['is_available'] else "offline"
+				logger.info(f"Driver {driver.user.username} went {action}")
+				
+				return Response(response_data, status=status.HTTP_200_OK)
+			
+			# Return validation errors
+			logger.warning(f"Availability toggle failed for user {request.user.username}: {serializer.errors}")
+			return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+			
+		except Exception as e:
+			logger.error(f"Error toggling availability for user {request.user.username}: {str(e)}")
+			return Response({
+				'success': False,
+				'message': 'An error occurred while updating availability',
+				'error_code': 'INTERNAL_ERROR'
+			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

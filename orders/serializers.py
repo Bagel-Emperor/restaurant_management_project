@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User, BaseUserManager
 from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Count
 from .models import Customer, Order, OrderItem, OrderStatus, UserProfile, Rider, Driver, Ride
 from home.models import MenuItem
 from decimal import Decimal
@@ -1177,3 +1178,275 @@ class RidePaymentSerializer(serializers.ModelSerializer):
         instance.save(update_fields=['payment_method', 'payment_status', 'paid_at'])
         
         return instance
+
+
+class DriverEarningsSerializer(serializers.Serializer):
+    """
+    Serializer for calculating driver earnings summary over the last 7 days.
+    
+    Computes:
+    - Total rides completed (COMPLETED status, PAID payment status)
+    - Total earnings from fares
+    - Payment method breakdown (CASH, UPI, CARD counts)
+    - Average fare per ride
+    
+    This provides transparency for drivers to track their performance and earnings,
+    similar to earnings summaries in Uber, Ola, and other ride-sharing platforms.
+    
+    Usage:
+        driver = Driver.objects.get(id=1)
+        serializer = DriverEarningsSerializer(driver)
+        summary = serializer.data
+    
+    Example Output:
+        {
+            "total_rides": 18,
+            "total_earnings": "4820.00",
+            "payment_breakdown": {
+                "CASH": 8,
+                "UPI": 6,
+                "CARD": 4
+            },
+            "average_fare": "267.78"
+        }
+    """
+    total_rides = serializers.SerializerMethodField()
+    total_earnings = serializers.SerializerMethodField()
+    payment_breakdown = serializers.SerializerMethodField()
+    average_fare = serializers.SerializerMethodField()
+    
+    def get_total_rides(self, driver):
+        """
+        Calculate total completed and paid rides in the last 7 days.
+        
+        Args:
+            driver (Driver): Driver instance
+        
+        Returns:
+            int: Count of qualifying rides
+        """
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        seven_days_ago = timezone.now() - timedelta(days=7)
+        
+        return Ride.objects.filter(
+            driver=driver,
+            status=Ride.STATUS_COMPLETED,
+            payment_status=Ride.PAYMENT_STATUS_PAID,
+            completed_at__gte=seven_days_ago
+        ).count()
+    
+    def get_total_earnings(self, driver):
+        """
+        Calculate total earnings from completed and paid rides in the last 7 days.
+        
+        Args:
+            driver (Driver): Driver instance
+        
+        Returns:
+            Decimal: Total fare amount (returns 0.00 if no rides)
+        """
+        from django.utils import timezone
+        from datetime import timedelta
+        from django.db.models import Sum
+        
+        seven_days_ago = timezone.now() - timedelta(days=7)
+        
+        total = Ride.objects.filter(
+            driver=driver,
+            status=Ride.STATUS_COMPLETED,
+            payment_status=Ride.PAYMENT_STATUS_PAID,
+            completed_at__gte=seven_days_ago
+        ).aggregate(total=Sum('fare'))['total']
+        
+        return total or Decimal('0.00')
+    
+    def get_payment_breakdown(self, driver):
+        """
+        Calculate count of rides by payment method in the last 7 days.
+        
+        Uses Django ORM's Count aggregation to perform counting at the database level
+        instead of iterating through rides in Python for better performance.
+        
+        Args:
+            driver (Driver): Driver instance
+        
+        Returns:
+            dict: Payment method counts, e.g., {"CASH": 5, "UPI": 3, "CARD": 2}
+        """
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        seven_days_ago = timezone.now() - timedelta(days=7)
+        
+        # Initialize breakdown with all payment methods at 0
+        breakdown = {
+            Ride.PAYMENT_METHOD_CASH: 0,
+            Ride.PAYMENT_METHOD_UPI: 0,
+            Ride.PAYMENT_METHOD_CARD: 0,
+        }
+        
+        # Use database-level aggregation for efficient counting
+        payment_counts = (
+            Ride.objects.filter(
+                driver=driver,
+                status=Ride.STATUS_COMPLETED,
+                payment_status=Ride.PAYMENT_STATUS_PAID,
+                completed_at__gte=seven_days_ago
+            )
+            .values('payment_method')
+            .annotate(count=Count('id'))
+        )
+        
+        # Update breakdown with actual counts from database
+        for entry in payment_counts:
+            method = entry['payment_method']
+            if method in breakdown:
+                breakdown[method] = entry['count']
+        
+        return breakdown
+    
+    def get_average_fare(self, driver):
+        """
+        Calculate average fare per ride in the last 7 days.
+        
+        Args:
+            driver (Driver): Driver instance
+        
+        Returns:
+            Decimal: Average fare (returns 0.00 if no rides)
+        """
+        from django.utils import timezone
+        from datetime import timedelta
+        from django.db.models import Avg
+        
+        seven_days_ago = timezone.now() - timedelta(days=7)
+        
+        average = Ride.objects.filter(
+            driver=driver,
+            status=Ride.STATUS_COMPLETED,
+            payment_status=Ride.PAYMENT_STATUS_PAID,
+            completed_at__gte=seven_days_ago
+        ).aggregate(average=Avg('fare'))['average']
+        
+        if average:
+            # Round to 2 decimal places
+            return Decimal(str(average)).quantize(Decimal('0.01'))
+        return Decimal('0.00')
+
+
+class DriverAvailabilitySerializer(serializers.Serializer):
+    """
+    Serializer for toggling driver availability status.
+    
+    Allows drivers to set their availability to accept ride requests.
+    This is a simple toggle between 'offline' and 'available' states,
+    similar to "Go Online" / "Go Offline" features in Uber, Ola, and Lyft.
+    
+    The serializer:
+    - Accepts boolean is_available field from the request
+    - Validates that the user has an associated driver profile
+    - Updates the driver's availability_status accordingly
+    
+    Usage:
+        # In a view with authenticated driver user
+        serializer = DriverAvailabilitySerializer(
+            data={'is_available': True},
+            context={'request': request}
+        )
+        if serializer.is_valid():
+            serializer.save()
+    
+    Request Example:
+        POST /api/driver/availability/
+        {
+            "is_available": true
+        }
+    
+    Response Example:
+        {
+            "is_available": true,
+            "availability_status": "available"
+        }
+    """
+    is_available = serializers.BooleanField(
+        required=True,
+        help_text="True to go online (available), False to go offline"
+    )
+    availability_status = serializers.CharField(read_only=True)
+    
+    def validate(self, data):
+        """
+        Validate that the requesting user has a driver profile.
+        
+        Args:
+            data (dict): Input data with is_available field
+        
+        Returns:
+            dict: Validated data
+        
+        Raises:
+            ValidationError: If user doesn't have a driver profile
+        """
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'user') or not request.user:
+            raise serializers.ValidationError(
+                "Authentication required to update availability."
+            )
+        
+        if not request.user.is_authenticated:
+            raise serializers.ValidationError(
+                "Authentication required to update availability."
+            )
+        
+        # Check if user has a driver profile
+        if not hasattr(request.user, 'driver_profile'):
+            raise serializers.ValidationError(
+                "User does not have a driver profile. Only drivers can update availability."
+            )
+        
+        return data
+    
+    def save(self):
+        """
+        Update the driver's availability_status based on is_available value.
+        
+        Maps boolean to availability_status:
+        - True -> 'available' (ready to accept rides)
+        - False -> 'offline' (not accepting rides)
+        
+        Returns:
+            Driver: Updated driver instance
+        """
+        request = self.context.get('request')
+        driver = request.user.driver_profile
+        
+        is_available = self.validated_data['is_available']
+        
+        # Map boolean to status choice
+        if is_available:
+            driver.availability_status = Driver.STATUS_AVAILABLE
+        else:
+            driver.availability_status = Driver.STATUS_OFFLINE
+        
+        driver.save(update_fields=['availability_status', 'updated_at'])
+        
+        return driver
+    
+    def to_representation(self, instance):
+        """
+        Customize the output representation.
+        
+        Args:
+            instance (Driver): Driver instance
+        
+        Returns:
+            dict: Serialized representation with is_available and availability_status
+        """
+        is_available = instance.availability_status == Driver.STATUS_AVAILABLE
+        
+        return {
+            'is_available': is_available,
+            'availability_status': instance.availability_status
+        }

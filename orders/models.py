@@ -534,14 +534,10 @@ class Driver(models.Model):
     # Availability status choices
     STATUS_OFFLINE = 'offline'
     STATUS_AVAILABLE = 'available'
-    STATUS_BUSY = 'busy'
-    STATUS_ON_TRIP = 'on_trip'
     
     STATUS_CHOICES = [
         (STATUS_OFFLINE, 'Offline'),
         (STATUS_AVAILABLE, 'Available'),
-        (STATUS_BUSY, 'Busy'),
-        (STATUS_ON_TRIP, 'On Trip'),
     ]
     
     # OneToOne relationship with Django User

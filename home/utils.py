@@ -350,7 +350,7 @@ def get_restaurant_status(check_time: Optional[datetime] = None) -> Dict[str, An
         }
 
 
-def validate_email(email: str) -> bool:
+def validate_email(email: Optional[str]) -> bool:
     """
     Validate an email address using regular expression matching.
     
@@ -360,7 +360,7 @@ def validate_email(email: str) -> bool:
     - Has a domain with at least one dot
     
     Args:
-        email (str): The email address to validate
+        email (Optional[str]): The email address to validate (can be None)
         
     Returns:
         bool: True if the email is valid, False otherwise

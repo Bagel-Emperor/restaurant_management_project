@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User, BaseUserManager
 from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Count
 from .models import Customer, Order, OrderItem, OrderStatus, UserProfile, Rider, Driver, Ride
 from home.models import MenuItem
 from decimal import Decimal
@@ -1265,6 +1266,9 @@ class DriverEarningsSerializer(serializers.Serializer):
         """
         Calculate count of rides by payment method in the last 7 days.
         
+        Uses Django ORM's Count aggregation to perform counting at the database level
+        instead of iterating through rides in Python for better performance.
+        
         Args:
             driver (Driver): Driver instance
         
@@ -1276,13 +1280,6 @@ class DriverEarningsSerializer(serializers.Serializer):
         
         seven_days_ago = timezone.now() - timedelta(days=7)
         
-        rides = Ride.objects.filter(
-            driver=driver,
-            status=Ride.STATUS_COMPLETED,
-            payment_status=Ride.PAYMENT_STATUS_PAID,
-            completed_at__gte=seven_days_ago
-        )
-        
         # Initialize breakdown with all payment methods at 0
         breakdown = {
             Ride.PAYMENT_METHOD_CASH: 0,
@@ -1290,10 +1287,23 @@ class DriverEarningsSerializer(serializers.Serializer):
             Ride.PAYMENT_METHOD_CARD: 0,
         }
         
-        # Count rides by payment method
-        for ride in rides:
-            if ride.payment_method in breakdown:
-                breakdown[ride.payment_method] += 1
+        # Use database-level aggregation for efficient counting
+        payment_counts = (
+            Ride.objects.filter(
+                driver=driver,
+                status=Ride.STATUS_COMPLETED,
+                payment_status=Ride.PAYMENT_STATUS_PAID,
+                completed_at__gte=seven_days_ago
+            )
+            .values('payment_method')
+            .annotate(count=Count('id'))
+        )
+        
+        # Update breakdown with actual counts from database
+        for entry in payment_counts:
+            method = entry['payment_method']
+            if method in breakdown:
+                breakdown[method] = entry['count']
         
         return breakdown
     

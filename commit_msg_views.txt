@@ -1,0 +1,144 @@
+feat: add driver earnings and availability API views (Tasks 12B, 13B)
+
+Summary
+=======
+Implemented REST API views to expose driver earnings summary and availability toggle endpoints
+for the driver portal, completing the full stack implementation started in Tasks 12A and 13A.
+
+Task 12B: DriverEarningsSummaryView
+====================================
+Features:
+- GET endpoint: /PerpexBistro/orders/driver/earnings/
+- Returns earnings summary for authenticated drivers
+- Requires IsAuthenticated permission class
+- Validates user has driver profile (403 FORBIDDEN if not)
+- Uses DriverEarningsSerializer for data aggregation
+- Comprehensive error handling with logging
+
+Implementation Details:
+- Class: DriverEarningsSummaryView(APIView)
+- HTTP Method: GET
+- Permission: permissions.IsAuthenticated
+- Response Format: JSON with total_rides, total_earnings, payment_breakdown, average_fare
+- Error Responses:
+  - 401 UNAUTHORIZED: Not authenticated
+  - 403 FORBIDDEN: No driver profile
+  - 500 INTERNAL_SERVER_ERROR: Server error with error_code='INTERNAL_ERROR'
+
+Response Example (Success):
+{
+  "total_rides": 18,
+  "total_earnings": "4850.00",
+  "payment_breakdown": {"CASH": 8, "UPI": 6, "CARD": 4},
+  "average_fare": "269.44"
+}
+
+Task 13B: DriverAvailabilityToggleView
+=======================================
+Features:
+- POST endpoint: /PerpexBistro/orders/driver/availability/
+- Allows drivers to toggle online/offline status
+- Requires IsAuthenticated permission class
+- Validates request data using DriverAvailabilitySerializer
+- Updates driver.availability_status in database
+- Returns updated status in clean boolean + status format
+
+Implementation Details:
+- Class: DriverAvailabilityToggleView(APIView)
+- HTTP Method: POST
+- Permission: permissions.IsAuthenticated
+- Request Body: {"is_available": true/false}
+- Response Format: {"is_available": bool, "availability_status": str}
+- Error Responses:
+  - 401 UNAUTHORIZED: Not authenticated
+  - 400 BAD_REQUEST: Validation errors (missing field, invalid value, no driver profile)
+  - 500 INTERNAL_SERVER_ERROR: Server error
+
+Response Example (Going Online):
+{
+  "is_available": true,
+  "availability_status": "available"
+}
+
+URL Configuration
+=================
+Added to orders/urls.py:
+- path('driver/earnings/', DriverEarningsSummaryView.as_view(), name='driver-earnings')
+- path('driver/availability/', DriverAvailabilityToggleView.as_view(), name='driver-availability')
+
+Full URLs:
+- GET /PerpexBistro/orders/driver/earnings/
+- POST /PerpexBistro/orders/driver/availability/
+
+Code Quality
+============
+- Follows existing project patterns (APIView, permission_classes)
+- Comprehensive docstrings with request/response examples
+- Proper exception handling with try/except blocks
+- Logging for successful operations and errors
+- Consistent error response format with error_code fields
+- Manual driver profile validation matching existing driver endpoints
+
+Integration Tests
+=================
+Added 15 comprehensive integration tests in test_driver_earnings_availability_views.py:
+
+DriverEarningsSummaryView Tests (8):
+- Unauthenticated access (401)
+- Non-driver user access (403)
+- No rides scenario (all zeros)
+- Multiple rides with different payment methods
+- Filters unpaid rides correctly
+- Filters incomplete rides correctly
+- 7-day time window filtering
+- All tests verify correct HTTP status codes and response data
+
+DriverAvailabilityToggleView Tests (8):
+- Unauthenticated access (401)
+- Non-driver user access (400)
+- Missing required field (400 with format='json')
+- Toggle offline to available (updates DB, returns correct response)
+- Toggle available to offline (updates DB, returns correct response)
+- Multiple sequential toggles
+- Invalid boolean value rejection (400)
+- Response format validation (both fields present, correct types)
+
+Test Coverage:
+- All happy paths tested
+- All error cases tested (authentication, permissions, validation)
+- Database updates verified with refresh_from_db()
+- Response data structure and types validated
+- HTTP status codes verified for all scenarios
+
+Technical Improvements
+======================
+- Added format='json' to test POST requests for proper DRF validation
+- Views imported in orders/urls.py with task comments
+- Serializers imported in orders/views.py
+- All 15 integration tests passing
+- All 15 serializer unit tests still passing (from Task 12A/13A)
+
+Learning Outcomes
+=================
+- Django REST Framework APIView pattern
+- Permission classes for authentication
+- Try/except error handling in views
+- Logging best practices for tracking actions
+- Integration testing with APIClient and force_authenticate
+- URL configuration and routing
+- format='json' requirement for proper POST validation in tests
+
+Related Work
+============
+- Builds on Tasks 12A (DriverEarningsSerializer) and 13A (DriverAvailabilitySerializer)
+- Uses simplified Driver.availability_status (offline/available)
+- Follows patterns from existing driver views (AcceptRideView, CompleteRideView)
+- Maintains consistency with project's error response format
+
+Next Steps
+==========
+- Ready for testing in development environment
+- Can be submitted to portal for evaluation
+- Future enhancement: Add caching for earnings summary (e.g., Redis)
+- Future enhancement: WebSocket notifications for availability changes
+- Future enhancement: Admin dashboard to view driver availability stats

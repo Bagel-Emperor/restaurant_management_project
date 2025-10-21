@@ -82,9 +82,11 @@ class CategoryMenuItemAPITestCase(TestCase):
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 3)
+        # Handle paginated response
+        results = response.data.get('results', response.data)
+        self.assertEqual(len(results), 3)
         
-        category_names = [cat['name'] for cat in response.data]
+        category_names = [cat['name'] for cat in results]
         self.assertIn('Appetizers', category_names)
         self.assertIn('Main Courses', category_names)
         self.assertIn('Desserts', category_names)
@@ -95,10 +97,12 @@ class CategoryMenuItemAPITestCase(TestCase):
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 4)  # 4 menu items created
+        # Handle paginated response
+        results = response.data.get('results', response.data)
+        self.assertEqual(len(results), 4)  # 4 menu items created
         
         # Check that category data is included
-        for item in response.data:
+        for item in results:
             self.assertIn('category', item)
             self.assertIn('category_name', item)
     
@@ -108,9 +112,11 @@ class CategoryMenuItemAPITestCase(TestCase):
         response = self.client.get(url, {'category': self.appetizers.id})
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['name'], 'Caesar Salad')
-        self.assertEqual(response.data[0]['category_name'], 'Appetizers')
+        # Handle paginated response
+        results = response.data.get('results', response.data)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['name'], 'Caesar Salad')
+        self.assertEqual(results[0]['category_name'], 'Appetizers')
     
     def test_filter_menu_items_by_category_name(self):
         """Test filtering menu items by category name (case-insensitive)"""
@@ -118,9 +124,11 @@ class CategoryMenuItemAPITestCase(TestCase):
         response = self.client.get(url, {'category': 'main courses'})
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['name'], 'Grilled Salmon')
-        self.assertEqual(response.data[0]['category_name'], 'Main Courses')
+        # Handle paginated response
+        results = response.data.get('results', response.data)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['name'], 'Grilled Salmon')
+        self.assertEqual(results[0]['category_name'], 'Main Courses')
     
     def test_filter_menu_items_by_partial_category_name(self):
         """Test filtering menu items by partial category name"""
@@ -128,8 +136,10 @@ class CategoryMenuItemAPITestCase(TestCase):
         response = self.client.get(url, {'category': 'app'})  # Should match 'Appetizers'
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['name'], 'Caesar Salad')
+        # Handle paginated response
+        results = response.data.get('results', response.data)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['name'], 'Caesar Salad')
     
     def test_combined_filtering_category_and_availability(self):
         """Test filtering by both category and availability"""
@@ -140,9 +150,11 @@ class CategoryMenuItemAPITestCase(TestCase):
         })
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['name'], 'Chocolate Cake')
-        self.assertEqual(response.data[0]['is_available'], False)
+        # Handle paginated response
+        results = response.data.get('results', response.data)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['name'], 'Chocolate Cake')
+        self.assertEqual(results[0]['is_available'], False)
     
     def test_combined_filtering_category_and_restaurant(self):
         """Test filtering by category and restaurant"""
@@ -153,8 +165,10 @@ class CategoryMenuItemAPITestCase(TestCase):
         })
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['name'], 'Grilled Salmon')
+        # Handle paginated response
+        results = response.data.get('results', response.data)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['name'], 'Grilled Salmon')
     
     def test_filter_nonexistent_category(self):
         """Test filtering by non-existent category returns empty results"""
@@ -162,7 +176,9 @@ class CategoryMenuItemAPITestCase(TestCase):
         response = self.client.get(url, {'category': 'nonexistent'})
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 0)
+        # Handle paginated response
+        results = response.data.get('results', response.data)
+        self.assertEqual(len(results), 0)
     
     def test_filter_nonexistent_category_id(self):
         """Test filtering by non-existent category ID returns empty results"""
@@ -170,7 +186,9 @@ class CategoryMenuItemAPITestCase(TestCase):
         response = self.client.get(url, {'category': '999'})
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 0)
+        # Handle paginated response
+        results = response.data.get('results', response.data)
+        self.assertEqual(len(results), 0)
     
     def test_filter_negative_category_id(self):
         """Test filtering by negative category ID returns empty results (not treated as name)"""
@@ -178,7 +196,9 @@ class CategoryMenuItemAPITestCase(TestCase):
         response = self.client.get(url, {'category': '-1'})
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 0)
+        # Handle paginated response
+        results = response.data.get('results', response.data)
+        self.assertEqual(len(results), 0)
     
     def test_filter_invalid_category_id_falls_back_to_name(self):
         """Test that invalid category ID formats fall back to name filtering"""
@@ -186,7 +206,9 @@ class CategoryMenuItemAPITestCase(TestCase):
         response = self.client.get(url, {'category': 'abc123'})
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 0)  # No category named 'abc123'
+        # Handle paginated response
+        results = response.data.get('results', response.data)
+        self.assertEqual(len(results), 0)  # No category named 'abc123'
     
     def test_menu_item_serializer_includes_category_fields(self):
         """Test that menu item serializer includes both category ID and name"""

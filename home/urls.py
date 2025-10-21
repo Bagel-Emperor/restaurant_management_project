@@ -16,7 +16,7 @@ from .views import (
 
 # Create router for ViewSets
 router = DefaultRouter()
-router.register(r'menu-categories', MenuCategoryViewSet, basename='menucategory')
+router.register(r'menu-categories', MenuCategoryViewSet, basename='menu-category')
 router.register(r'menu-items', MenuItemViewSet, basename='menuitem')
 router.register(r'reviews', UserReviewViewSet, basename='userreview')
 

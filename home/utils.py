@@ -348,3 +348,62 @@ def get_restaurant_status(check_time: Optional[datetime] = None) -> Dict[str, An
             'status_message': 'Status unavailable',
             'error': str(e)
         }
+
+
+def validate_email(email: Optional[str]) -> bool:
+    """
+    Validate an email address using regular expression matching.
+    
+    This function checks if an email address follows the standard email format:
+    - Contains exactly one @ symbol
+    - Has valid characters before and after @
+    - Has a domain with at least one dot
+    
+    Args:
+        email (Optional[str]): The email address to validate (can be None)
+        
+    Returns:
+        bool: True if the email is valid, False otherwise
+        
+    Examples:
+        >>> validate_email("user@example.com")
+        True
+        >>> validate_email("invalid.email")
+        False
+        >>> validate_email("user@domain")
+        False
+        >>> validate_email("")
+        False
+        
+    Notes:
+        - Uses a regex pattern that covers most common email formats
+        - Handles edge cases like empty strings, None values
+        - Case-insensitive validation
+    """
+    # Handle None or non-string inputs
+    if not email or not isinstance(email, str):
+        return False
+    
+    # Strip whitespace
+    email = email.strip()
+    
+    # Check for empty string after stripping
+    if not email:
+        return False
+    
+    # Regular expression pattern for email validation
+    # Pattern explanation:
+    # ^[a-zA-Z0-9._%+-]+ : Start with alphanumeric chars and common email chars
+    # @ : Must have exactly one @ symbol
+    # [a-zA-Z0-9.-]+ : Domain name with alphanumeric, dots, hyphens
+    # \. : Must have a dot in domain
+    # [a-zA-Z]{2,}$ : Top-level domain (at least 2 letters)
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    
+    # Use re.match to validate the email format
+    if re.match(pattern, email):
+        # Additional check: email shouldn't be too long
+        if len(email) <= 254:  # RFC 5321 limit
+            return True
+    
+    return False

@@ -58,8 +58,10 @@ class MenuItemViewSetTestCase(TestCase):
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['name'], 'Test Pizza')
+        # Handle paginated response
+        results = response.data.get('results', response.data)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['name'], 'Test Pizza')
     
     def test_create_menu_item_requires_admin(self):
         """Test that creating menu items requires admin privileges"""
@@ -72,9 +74,9 @@ class MenuItemViewSetTestCase(TestCase):
             'is_available': True
         }
         
-        # Test without authentication - should be 403 in DRF with IsAdminUser
+        # Test without authentication - should be 401 UNAUTHORIZED (not authenticated)
         response = self.client.post(url, data)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         
         # Test with regular user
         self.client.force_authenticate(user=self.regular_user)
@@ -98,9 +100,9 @@ class MenuItemViewSetTestCase(TestCase):
             'is_available': True
         }
         
-        # Test without authentication - should be 403 in DRF with IsAdminUser
+        # Test without authentication - should be 401 UNAUTHORIZED (not authenticated)
         response = self.client.put(url, data)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         
         # Test with admin user
         self.client.force_authenticate(user=self.admin_user)
@@ -147,7 +149,9 @@ class MenuItemViewSetTestCase(TestCase):
         response = self.client.get(url, {'restaurant': self.restaurant.id})
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
+        # Handle paginated response
+        results = response.data.get('results', response.data)
+        self.assertEqual(len(results), 1)
     
     def test_invalid_restaurant_filter(self):
         """Test invalid restaurant ID in filter"""
@@ -178,9 +182,9 @@ class MenuItemViewSetTestCase(TestCase):
         """Test that deleting menu items requires admin privileges"""
         url = reverse('menuitem-detail', kwargs={'pk': self.menu_item.pk})
         
-        # Test without authentication - should be 403 in DRF with IsAdminUser
+        # Test without authentication - should be 401 UNAUTHORIZED (not authenticated)
         response = self.client.delete(url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         
         # Test with admin user
         self.client.force_authenticate(user=self.admin_user)

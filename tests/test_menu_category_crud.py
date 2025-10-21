@@ -16,7 +16,7 @@ class MenuCategoryCRUDTestCase(TestCase):
     def setUp(self):
         """Set up test client and create test data."""
         self.client = APIClient()
-        self.list_url = reverse('menucategory-list')
+        self.list_url = reverse('menu-category-list')
         
         # Create a test user for authenticated operations
         self.user = User.objects.create_user(
@@ -66,7 +66,7 @@ class MenuCategoryCRUDTestCase(TestCase):
     def test_retrieve_category(self):
         """Test retrieving a single menu category - public access."""
         # No authentication required for retrieval
-        detail_url = reverse('menucategory-detail', kwargs={'pk': self.category1.pk})
+        detail_url = reverse('menu-category-detail', kwargs={'pk': self.category1.pk})
         response = self.client.get(detail_url)
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -105,7 +105,7 @@ class MenuCategoryCRUDTestCase(TestCase):
         # Authenticate the client
         self.client.force_authenticate(user=self.user)
         
-        detail_url = reverse('menucategory-detail', kwargs={'pk': self.category1.pk})
+        detail_url = reverse('menu-category-detail', kwargs={'pk': self.category1.pk})
         data = {'name': 'Starters'}
         response = self.client.put(detail_url, data, format='json')
         
@@ -121,7 +121,7 @@ class MenuCategoryCRUDTestCase(TestCase):
         # Authenticate the client
         self.client.force_authenticate(user=self.user)
         
-        detail_url = reverse('menucategory-detail', kwargs={'pk': self.category2.pk})
+        detail_url = reverse('menu-category-detail', kwargs={'pk': self.category2.pk})
         data = {'name': 'Entrees'}
         response = self.client.patch(detail_url, data, format='json')
         
@@ -137,7 +137,7 @@ class MenuCategoryCRUDTestCase(TestCase):
         # Authenticate the client
         self.client.force_authenticate(user=self.user)
         
-        detail_url = reverse('menucategory-detail', kwargs={'pk': self.category3.pk})
+        detail_url = reverse('menu-category-detail', kwargs={'pk': self.category3.pk})
         response = self.client.delete(detail_url)
         
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
@@ -149,7 +149,7 @@ class MenuCategoryCRUDTestCase(TestCase):
     def test_retrieve_nonexistent_category(self):
         """Test retrieving a category that doesn't exist - public access."""
         # No authentication required
-        detail_url = reverse('menucategory-detail', kwargs={'pk': 9999})
+        detail_url = reverse('menu-category-detail', kwargs={'pk': 9999})
         response = self.client.get(detail_url)
         
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -159,7 +159,7 @@ class MenuCategoryCRUDTestCase(TestCase):
         # Authenticate the client
         self.client.force_authenticate(user=self.user)
         
-        detail_url = reverse('menucategory-detail', kwargs={'pk': 9999})
+        detail_url = reverse('menu-category-detail', kwargs={'pk': 9999})
         data = {'name': 'Nonexistent'}
         response = self.client.put(detail_url, data, format='json')
         
@@ -170,7 +170,7 @@ class MenuCategoryCRUDTestCase(TestCase):
         # Authenticate the client
         self.client.force_authenticate(user=self.user)
         
-        detail_url = reverse('menucategory-detail', kwargs={'pk': 9999})
+        detail_url = reverse('menu-category-detail', kwargs={'pk': 9999})
         response = self.client.delete(detail_url)
         
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -206,7 +206,7 @@ class MenuCategoryCRUDTestCase(TestCase):
     def test_update_category_without_auth(self):
         """Test that updating a category without authentication is rejected."""
         # No authentication
-        detail_url = reverse('menucategory-detail', kwargs={'pk': self.category1.pk})
+        detail_url = reverse('menu-category-detail', kwargs={'pk': self.category1.pk})
         data = {'name': 'Unauthorized Update'}
         response = self.client.put(detail_url, data, format='json')
         
@@ -215,7 +215,7 @@ class MenuCategoryCRUDTestCase(TestCase):
     def test_delete_category_without_auth(self):
         """Test that deleting a category without authentication is rejected."""
         # No authentication
-        detail_url = reverse('menucategory-detail', kwargs={'pk': self.category1.pk})
+        detail_url = reverse('menu-category-detail', kwargs={'pk': self.category1.pk})
         response = self.client.delete(detail_url)
         
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -257,7 +257,7 @@ class MenuCategoryCRUDTestCase(TestCase):
         """Test updating a category's description."""
         self.client.force_authenticate(user=self.user)
         
-        detail_url = reverse('menucategory-detail', kwargs={'pk': self.category1.pk})
+        detail_url = reverse('menu-category-detail', kwargs={'pk': self.category1.pk})
         data = {
             'name': 'Appetizers',
             'description': 'Delicious starters to begin your meal'

@@ -155,5 +155,6 @@ class CalculateDiscountTestCase(TestCase):
     def test_calculate_discount_early_bird_special(self):
         """Test real-world scenario: $22.95 dinner with 30% early bird discount."""
         result = calculate_discount(22.95, 30)
-        # 22.95 - (22.95 * 0.30) = 22.95 - 6.885 = 16.065 -> 16.06 (banker's rounding)
+        # 22.95 * 0.70 = 16.065 exactly
+        # ROUND_HALF_EVEN: 16.065 rounds to 16.06 (rounds toward even digit 6)
         self.assertEqual(result, Decimal('16.06'))

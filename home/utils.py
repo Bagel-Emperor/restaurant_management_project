@@ -490,8 +490,6 @@ def calculate_discount(original_price, discount_percentage):
     # Calculate final price: original_price - discount_amount
     discounted_price = original_price - discount_amount
     
-    # Ensure non-negative result (safety check, though math should prevent negative)
-    discounted_price = max(discounted_price, Decimal('0.00'))
-    
     # Round to 2 decimal places for currency precision
+    # Uses ROUND_HALF_EVEN (banker's rounding) by default
     return discounted_price.quantize(Decimal('0.01'))

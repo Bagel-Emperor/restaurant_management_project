@@ -53,11 +53,63 @@ class MenuItem(models.Model):
 		default=False,
 		help_text="Mark this item as a daily special to feature it prominently"
 	)
+	discount_percentage = models.DecimalField(
+		max_digits=5,
+		decimal_places=2,
+		default=0.00,
+		validators=[
+			MinValueValidator(0.00),
+			MaxValueValidator(100.00)
+		],
+		help_text="Discount percentage for this menu item (0-100)"
+	)
 	created_at = models.DateTimeField(auto_now_add=True)
 	image = models.ImageField(upload_to='menu_images/', blank=True, null=True)
 
 	def __str__(self):
 		return self.name
+	
+	def calculate_final_price(self):
+		"""
+		Calculate the final price of the menu item after applying any discount.
+		
+		Returns the discounted price if a discount percentage is set (greater than 0),
+		otherwise returns the original price. The discount is calculated as:
+		final_price = original_price - (original_price × discount_percentage / 100)
+		
+		Returns:
+			Decimal: The final price after discount (rounded to 2 decimal places)
+			
+		Examples:
+			>>> item = MenuItem(price=Decimal('10.00'), discount_percentage=Decimal('0.00'))
+			>>> item.calculate_final_price()
+			Decimal('10.00')
+			
+			>>> item = MenuItem(price=Decimal('10.00'), discount_percentage=Decimal('20.00'))
+			>>> item.calculate_final_price()
+			Decimal('8.00')
+			
+			>>> item = MenuItem(price=Decimal('15.50'), discount_percentage=Decimal('15.00'))
+			>>> item.calculate_final_price()
+			Decimal('13.18')
+		"""
+		from decimal import Decimal
+		
+		# If no discount, return original price
+		if not self.discount_percentage or self.discount_percentage == 0:
+			return self.price
+		
+		# Calculate discount amount: price × (discount_percentage / 100)
+		discount_amount = self.price * (self.discount_percentage / Decimal('100'))
+		
+		# Calculate final price: original price - discount amount
+		final_price = self.price - discount_amount
+		
+		# Ensure we return a non-negative price (safety check)
+		final_price = max(final_price, Decimal('0.00'))
+		
+		# Round to 2 decimal places for currency precision
+		return final_price.quantize(Decimal('0.01'))
 
 class Feedback(models.Model):
 	comment = models.TextField()

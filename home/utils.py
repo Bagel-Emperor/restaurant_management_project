@@ -407,3 +407,91 @@ def validate_email(email: Optional[str]) -> bool:
             return True
     
     return False
+
+
+def calculate_discount(original_price, discount_percentage):
+    """
+    Calculate the discounted price for a menu item.
+    
+    This is a utility function for calculating discounts on individual menu items.
+    Takes an original price and a discount percentage, then returns the final
+    price after applying the discount.
+    
+    Args:
+        original_price (float, int, or Decimal): The original price of the item.
+            Must be a positive number (>= 0).
+        discount_percentage (float, int, or Decimal): The discount percentage to apply.
+            Must be between 0 and 100 (inclusive).
+    
+    Returns:
+        Decimal: The discounted price, rounded to 2 decimal places.
+            Returns the original price if discount is 0%.
+    
+    Raises:
+        ValueError: If original_price is negative.
+        ValueError: If discount_percentage is not between 0 and 100.
+        TypeError: If inputs cannot be converted to numbers.
+    
+    Examples:
+        >>> calculate_discount(100, 20)
+        Decimal('80.00')
+        
+        >>> calculate_discount(10.50, 0)
+        Decimal('10.50')
+        
+        >>> calculate_discount(50, 50)
+        Decimal('25.00')
+        
+        >>> calculate_discount(99.99, 15)
+        Decimal('84.99')
+        
+        >>> calculate_discount(-10, 20)
+        ValueError: original_price must be non-negative
+        
+        >>> calculate_discount(100, -5)
+        ValueError: discount_percentage must be between 0 and 100
+        
+        >>> calculate_discount(100, 150)
+        ValueError: discount_percentage must be between 0 and 100
+    """
+    from decimal import Decimal, InvalidOperation
+    
+    # Input validation and type conversion
+    try:
+        # Convert inputs to Decimal for precise currency calculations
+        original_price = Decimal(str(original_price))
+        discount_percentage = Decimal(str(discount_percentage))
+    except (InvalidOperation, ValueError, TypeError) as e:
+        raise TypeError(
+            f"Invalid input types: original_price and discount_percentage must be numeric. "
+            f"Received: original_price={type(original_price).__name__}, "
+            f"discount_percentage={type(discount_percentage).__name__}"
+        ) from e
+    
+    # Validate original_price is non-negative
+    if original_price < 0:
+        raise ValueError(
+            f"original_price must be non-negative. Received: {original_price}"
+        )
+    
+    # Validate discount_percentage is between 0 and 100
+    if discount_percentage < 0 or discount_percentage > 100:
+        raise ValueError(
+            f"discount_percentage must be between 0 and 100. Received: {discount_percentage}"
+        )
+    
+    # If no discount, return original price
+    if discount_percentage == 0:
+        return original_price.quantize(Decimal('0.01'))
+    
+    # Calculate discount amount: original_price × (discount_percentage / 100)
+    discount_amount = original_price * (discount_percentage / Decimal('100'))
+    
+    # Calculate final price: original_price - discount_amount
+    discounted_price = original_price - discount_amount
+    
+    # Ensure non-negative result (safety check, though math should prevent negative)
+    discounted_price = max(discounted_price, Decimal('0.00'))
+    
+    # Round to 2 decimal places for currency precision
+    return discounted_price.quantize(Decimal('0.01'))

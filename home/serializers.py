@@ -352,3 +352,33 @@ class UserReviewSerializer(serializers.ModelSerializer):
         
         return data
 
+
+class RestaurantOpeningHoursSerializer(serializers.ModelSerializer):
+    """
+    Serializer for restaurant opening hours.
+    
+    Returns only the opening hours information for the restaurant,
+    formatted as a JSON object with days of the week as keys and
+    opening/closing times as values.
+    
+    Example output:
+    {
+        "restaurant_name": "Perpex Bistro",
+        "opening_hours": {
+            "Monday": "9:00 AM - 10:00 PM",
+            "Tuesday": "9:00 AM - 10:00 PM",
+            "Wednesday": "9:00 AM - 10:00 PM",
+            "Thursday": "9:00 AM - 11:00 PM",
+            "Friday": "9:00 AM - 11:00 PM",
+            "Saturday": "10:00 AM - 11:00 PM",
+            "Sunday": "10:00 AM - 9:00 PM"
+        }
+    }
+    """
+    restaurant_name = serializers.CharField(source='name', read_only=True)
+    
+    class Meta:
+        model = Restaurant
+        fields = ['restaurant_name', 'opening_hours']
+        read_only_fields = ['restaurant_name', 'opening_hours']
+

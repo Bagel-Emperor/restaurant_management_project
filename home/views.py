@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.conf import settings
 from django.core.mail import send_mail
+from django.http import Http404
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status, viewsets, permissions, filters
@@ -22,6 +23,7 @@ from .serializers import (
     TableSerializer,
     DailySpecialSerializer,
     UserReviewSerializer,
+    RestaurantOpeningHoursSerializer,
 )
 
 # Email configuration constants
@@ -1453,4 +1455,73 @@ class RestaurantReviewsListView(ListAPIView):
                    request.query_params.get('page', 1), 
                    dict(request.query_params))
         return super().list(request, *args, **kwargs)
+
+
+# ================================
+# RESTAURANT OPENING HOURS API
+# ================================
+
+class RestaurantOpeningHoursView(RetrieveAPIView):
+    """
+    API endpoint to retrieve restaurant opening hours.
+    
+    URL: GET /api/opening-hours/
+    
+    Features:
+    - Public access (no authentication required)
+    - Returns opening hours for the main restaurant
+    - Simple, focused response with just hours information
+    - Includes restaurant name for context
+    
+    Response Format:
+    {
+        "restaurant_name": "Perpex Bistro",
+        "opening_hours": {
+            "Monday": "9:00 AM - 10:00 PM",
+            "Tuesday": "9:00 AM - 10:00 PM",
+            "Wednesday": "9:00 AM - 10:00 PM",
+            "Thursday": "9:00 AM - 11:00 PM",
+            "Friday": "9:00 AM - 11:00 PM",
+            "Saturday": "10:00 AM - 11:00 PM",
+            "Sunday": "10:00 AM - 9:00 PM"
+        }
+    }
+    
+    Error Responses:
+    - 404: Restaurant not found in database
+    
+    Usage:
+    This endpoint is ideal for displaying opening hours on the website
+    header, footer, or a dedicated hours page without fetching all
+    restaurant information.
+    """
+    queryset = Restaurant.objects.all()
+    serializer_class = RestaurantOpeningHoursSerializer
+    permission_classes = [permissions.AllowAny]  # Public access
+    
+    def get_object(self):
+        """
+        Return the first (main) restaurant.
+        Override to get the main restaurant instead of requiring an ID.
+        
+        Raises:
+            Http404: If no restaurant exists in the database
+        """
+        restaurant = Restaurant.objects.first()
+        if not restaurant:
+            logger.warning("Opening hours requested but no restaurant exists in database")
+            raise Http404("Restaurant not found. Please contact support.")
+        return restaurant
+    
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Override retrieve to add logging.
+        
+        Http404 exceptions from get_object() are handled by DRF's
+        exception handler automatically.
+        """
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        logger.info('Opening hours retrieved successfully')
+        return Response(serializer.data)
 

@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework import status, viewsets, permissions, filters
 from rest_framework.decorators import action
 from rest_framework.generics import CreateAPIView
+from rest_framework.pagination import PageNumberPagination
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.db.models import Q
@@ -1311,4 +1312,145 @@ class UserReviewViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(user_reviews, many=True)
         logger.info('User %s retrieved their reviews', request.user.username)
         return Response(serializer.data)
+
+
+# ================================
+# RESTAURANT REVIEWS PAGINATION
+# ================================
+
+class RestaurantReviewsPagination(PageNumberPagination):
+    """
+    Custom pagination class for restaurant reviews.
+    
+    Provides enhanced pagination metadata including:
+    - page_number: Current page number
+    - page_size: Number of reviews per page
+    - total_reviews: Total number of reviews across all pages
+    - total_pages: Total number of pages
+    - next: URL to next page (if available)
+    - previous: URL to previous page (if available)
+    """
+    page_size = 10
+    page_size_query_param = 'page_size'  # Allow client to override page size
+    max_page_size = 100  # Maximum allowed page size
+    
+    def get_paginated_response(self, data):
+        """
+        Return paginated response with enhanced metadata.
+        """
+        return Response({
+            'pagination': {
+                'page_number': self.page.number,
+                'page_size': len(data),  # Actual number of items on this page
+                'total_reviews': self.page.paginator.count,
+                'total_pages': self.page.paginator.num_pages,
+                'next': self.get_next_link(),
+                'previous': self.get_previous_link(),
+            },
+            'reviews': data
+        })
+
+
+class RestaurantReviewsListView(ListAPIView):
+    """
+    API endpoint to retrieve paginated user reviews for the restaurant.
+    
+    URL: GET /api/restaurant-reviews/
+    
+    Features:
+    - Public access (no authentication required)
+    - Paginated response (10 reviews per page by default)
+    - Enhanced pagination metadata
+    - Ordered by most recent first
+    - Optional filtering by rating, menu_item, or user
+    
+    Query Parameters:
+    - page: Page number (default: 1)
+    - page_size: Number of reviews per page (default: 10, max: 100)
+    - rating: Filter by star rating (1-5)
+    - menu_item: Filter by menu item ID
+    - user: Filter by user ID
+    
+    Response Format:
+    {
+        "pagination": {
+            "page_number": 1,
+            "page_size": 10,
+            "total_reviews": 45,
+            "total_pages": 5,
+            "next": "http://localhost:8000/api/restaurant-reviews/?page=2",
+            "previous": null
+        },
+        "reviews": [
+            {
+                "id": 1,
+                "user": 1,
+                "user_username": "john_doe",
+                "menu_item": 5,
+                "menu_item_name": "Margherita Pizza",
+                "rating": 5,
+                "comment": "Absolutely delicious! The best pizza I've ever had.",
+                "review_date": "2025-10-22T14:30:00Z"
+            },
+            ...
+        ]
+    }
+    """
+    queryset = UserReview.objects.select_related('user', 'menu_item').all()
+    serializer_class = UserReviewSerializer
+    permission_classes = [permissions.AllowAny]  # Public access
+    pagination_class = RestaurantReviewsPagination
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ['review_date', 'rating']
+    ordering = ['-review_date']  # Most recent first by default
+    
+    def get_queryset(self):
+        """
+        Filter reviews by rating, menu_item, or user if provided in query params.
+        """
+        queryset = super().get_queryset()
+        
+        # Filter by rating
+        rating = self.request.query_params.get('rating')
+        if rating:
+            try:
+                rating_int = int(rating)
+                if 1 <= rating_int <= 5:
+                    queryset = queryset.filter(rating=rating_int)
+                    logger.info('Filtered restaurant reviews by rating: %s', rating_int)
+                else:
+                    logger.warning('Invalid rating parameter (must be 1-5): %s', rating)
+            except (ValueError, TypeError):
+                logger.warning('Invalid rating parameter format: %s', rating)
+        
+        # Filter by menu_item
+        menu_item_id = self.request.query_params.get('menu_item')
+        if menu_item_id:
+            try:
+                menu_item_int = int(menu_item_id)
+                queryset = queryset.filter(menu_item_id=menu_item_int)
+                logger.info('Filtered restaurant reviews for menu_item ID: %s', menu_item_int)
+            except (ValueError, TypeError):
+                logger.warning('Invalid menu_item parameter: %s', menu_item_id)
+        
+        # Filter by user
+        user_id = self.request.query_params.get('user')
+        if user_id:
+            try:
+                user_int = int(user_id)
+                queryset = queryset.filter(user_id=user_int)
+                logger.info('Filtered restaurant reviews by user ID: %s', user_int)
+            except (ValueError, TypeError):
+                logger.warning('Invalid user parameter: %s', user_id)
+        
+        return queryset
+    
+    def list(self, request, *args, **kwargs):
+        """
+        Override list method to add logging.
+        """
+        logger.info('Restaurant reviews list requested - Page: %s, Filters: %s', 
+                   request.query_params.get('page', 1), 
+                   dict(request.query_params))
+        return super().list(request, *args, **kwargs)
 

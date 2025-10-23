@@ -6,6 +6,7 @@ from .views import (
     restaurant_info,
     create_menu_item, list_menu_items, get_menu_item, update_menu_item, delete_menu_item,
     MenuCategoryViewSet, MenuItemViewSet, DailySpecialsAPIView, UserReviewViewSet,
+    RestaurantReviewsListView,  # New paginated reviews endpoint
     # Cart API views
     cart_summary, add_to_cart_api, remove_from_cart_api, update_cart_item_api, clear_cart_api,
     # Contact form API view
@@ -50,6 +51,9 @@ urlpatterns = [
 
     # API endpoint for daily specials
     path('api/daily-specials/', DailySpecialsAPIView.as_view(), name='daily-specials'),
+    
+    # API endpoint for paginated restaurant reviews
+    path('api/restaurant-reviews/', RestaurantReviewsListView.as_view(), name='restaurant-reviews'),
 
     # API endpoints for ViewSets (menu-categories and menu-items)
     path('api/', include(router.urls)),

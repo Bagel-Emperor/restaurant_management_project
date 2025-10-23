@@ -22,6 +22,24 @@ class Restaurant(models.Model):
 
 	def __str__(self):
 		return self.name
+	
+	def get_total_menu_items(self):
+		"""
+		Return the total number of menu items for this restaurant.
+		
+		This method counts all menu items associated with this restaurant,
+		regardless of availability status. Useful for displaying summary
+		information about the restaurant's menu.
+		
+		Returns:
+			int: Total count of menu items for this restaurant
+			
+		Example:
+			>>> restaurant = Restaurant.objects.first()
+			>>> restaurant.get_total_menu_items()
+			42
+		"""
+		return self.menu_items.count()
 
 # Model to store contact form submissions
 class ContactSubmission(models.Model):

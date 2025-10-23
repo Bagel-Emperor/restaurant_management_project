@@ -24,6 +24,7 @@ from .serializers import (
     DailySpecialSerializer,
     UserReviewSerializer,
     RestaurantOpeningHoursSerializer,
+    MenuItemSearchSerializer,
 )
 
 # Email configuration constants
@@ -1524,4 +1525,118 @@ class RestaurantOpeningHoursView(RetrieveAPIView):
         serializer = self.get_serializer(instance)
         logger.info('Opening hours retrieved successfully')
         return Response(serializer.data)
+
+
+# ================================
+# MENU ITEM SEARCH (FRONTEND)
+# ================================
+
+class MenuItemSearchPagination(PageNumberPagination):
+    """
+    Pagination class for menu item search results.
+    
+    Optimized for frontend search functionality with:
+    - 50 items per page (suitable for large menus)
+    - Client can customize page size up to 200 items
+    - Standard pagination metadata
+    """
+    page_size = 50
+    page_size_query_param = 'page_size'
+    max_page_size = 200
+
+
+class MenuItemSearchView(ListAPIView):
+    """
+    API endpoint for searching menu items by name (Frontend optimized).
+    
+    URL: GET /api/menu-search/?q=<search_term>
+    
+    Features:
+    - Public access (no authentication required)
+    - Case-insensitive search by menu item name
+    - Returns lightweight response (id, name, image only)
+    - Optimized for frontend search bars and autocomplete
+    - Only returns available menu items
+    - Paginated results (50 items per page, configurable)
+    
+    Query Parameters:
+    - q (required): Search term to match against menu item names
+    - page (optional): Page number for pagination
+    - page_size (optional): Items per page (max 200)
+    
+    Example Request:
+    GET /api/menu-search/?q=pizza
+    GET /api/menu-search/?q=pizza&page=2&page_size=20
+    
+    Example Response:
+    {
+        "count": 25,
+        "next": "http://example.com/api/menu-search/?page=2&q=pizza",
+        "previous": null,
+        "results": [
+            {
+                "id": 1,
+                "name": "Margherita Pizza",
+                "image": "https://example.com/media/menu_images/pizza.jpg"
+            },
+            {
+                "id": 5,
+                "name": "Pepperoni Pizza",
+                "image": "https://example.com/media/menu_images/pepperoni.jpg"
+            }
+        ]
+    }
+    
+    Error Responses:
+    - 400: Missing or empty 'q' parameter
+    
+    Notes:
+    - Search is case-insensitive using Django's __icontains lookup
+    - Only available menu items (is_available=True) are returned
+    - Returns empty results if no matches found
+    - Image URLs are absolute URLs (full path including domain)
+    - Pagination helps with large menus (restaurants with 100+ items)
+    """
+    serializer_class = MenuItemSearchSerializer
+    permission_classes = [permissions.AllowAny]  # Public access
+    pagination_class = MenuItemSearchPagination  # 50 items per page
+    
+    def get_queryset(self):
+        """
+        Filter menu items by search query parameter 'q'.
+        Only returns available items matching the search term.
+        
+        Note: Validation of the 'q' parameter is handled in list() method.
+        This method assumes a valid search query is present.
+        """
+        queryset = MenuItem.objects.filter(is_available=True)
+        
+        # Get the search query from 'q' parameter
+        search_query = self.request.query_params.get('q', '').strip()
+        
+        if search_query:
+            # Perform case-insensitive search on name field
+            queryset = queryset.filter(name__icontains=search_query)
+            logger.info(f'Menu search performed: query="{search_query}", results={queryset.count()}')
+        
+        return queryset
+    
+    def list(self, request, *args, **kwargs):
+        """
+        Override list to add validation and logging.
+        Returns 400 if 'q' parameter is missing or empty.
+        """
+        search_query = request.query_params.get('q', None)
+        
+        if not search_query or not search_query.strip():
+            logger.warning('Menu search attempted without search query')
+            return Response(
+                {
+                    'error': 'Search query parameter "q" is required and cannot be empty.',
+                    'example': '/api/menu-search/?q=pizza'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        return super().list(request, *args, **kwargs)
 

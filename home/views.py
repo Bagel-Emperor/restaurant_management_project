@@ -1605,20 +1605,19 @@ class MenuItemSearchView(ListAPIView):
         """
         Filter menu items by search query parameter 'q'.
         Only returns available items matching the search term.
+        
+        Note: Validation of the 'q' parameter is handled in list() method.
+        This method assumes a valid search query is present.
         """
         queryset = MenuItem.objects.filter(is_available=True)
         
         # Get the search query from 'q' parameter
-        search_query = self.request.query_params.get('q', None)
+        search_query = self.request.query_params.get('q', '').strip()
         
-        if not search_query or not search_query.strip():
-            # Return empty queryset if no search query provided
-            logger.warning('Menu search attempted without search query')
-            return MenuItem.objects.none()
-        
-        # Perform case-insensitive search on name field
-        queryset = queryset.filter(name__icontains=search_query.strip())
-        logger.info(f'Menu search performed: query="{search_query}", results={queryset.count()}')
+        if search_query:
+            # Perform case-insensitive search on name field
+            queryset = queryset.filter(name__icontains=search_query)
+            logger.info(f'Menu search performed: query="{search_query}", results={queryset.count()}')
         
         return queryset
     
@@ -1630,6 +1629,7 @@ class MenuItemSearchView(ListAPIView):
         search_query = request.query_params.get('q', None)
         
         if not search_query or not search_query.strip():
+            logger.warning('Menu search attempted without search query')
             return Response(
                 {
                     'error': 'Search query parameter "q" is required and cannot be empty.',

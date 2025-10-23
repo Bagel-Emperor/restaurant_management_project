@@ -19,7 +19,6 @@ Test Coverage:
 - HTTP method restrictions
 """
 
-import unittest
 from django.test import TestCase
 from rest_framework.test import APIClient
 from rest_framework import status

@@ -104,7 +104,12 @@ class RestaurantOpeningHoursAPITest(TestCase):
         response = self.client.get(self.url)
         
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertIn('error', response.data)
+        # DRF's exception handler returns 'detail' field for Http404
+        self.assertIn('detail', response.data)
+        self.assertEqual(
+            response.data['detail'],
+            'Restaurant not found. Please contact support.'
+        )
     
     def test_empty_opening_hours(self):
         """Test handling of restaurant with empty opening hours."""

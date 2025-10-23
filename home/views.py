@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.conf import settings
 from django.core.mail import send_mail
+from django.http import Http404
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status, viewsets, permissions, filters
@@ -1502,36 +1503,25 @@ class RestaurantOpeningHoursView(RetrieveAPIView):
         """
         Return the first (main) restaurant.
         Override to get the main restaurant instead of requiring an ID.
+        
+        Raises:
+            Http404: If no restaurant exists in the database
         """
         restaurant = Restaurant.objects.first()
         if not restaurant:
             logger.warning("Opening hours requested but no restaurant exists in database")
+            raise Http404("Restaurant not found. Please contact support.")
         return restaurant
     
     def retrieve(self, request, *args, **kwargs):
         """
-        Override retrieve to add custom error handling and logging.
+        Override retrieve to add logging.
+        
+        Http404 exceptions from get_object() are handled by DRF's
+        exception handler automatically.
         """
-        try:
-            instance = self.get_object()
-            if not instance:
-                return Response(
-                    {
-                        'error': 'Restaurant not found. Please contact support.'
-                    },
-                    status=status.HTTP_404_NOT_FOUND
-                )
-            
-            serializer = self.get_serializer(instance)
-            logger.info('Opening hours retrieved successfully')
-            return Response(serializer.data)
-            
-        except Exception as e:
-            logger.error(f'Error retrieving opening hours: {str(e)}')
-            return Response(
-                {
-                    'error': 'Unable to retrieve opening hours. Please try again later.'
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        logger.info('Opening hours retrieved successfully')
+        return Response(serializer.data)
 

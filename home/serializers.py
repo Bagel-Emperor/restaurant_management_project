@@ -382,3 +382,41 @@ class RestaurantOpeningHoursSerializer(serializers.ModelSerializer):
         fields = ['restaurant_name', 'opening_hours']
         read_only_fields = ['restaurant_name', 'opening_hours']
 
+
+class MenuItemSearchSerializer(serializers.ModelSerializer):
+    """
+    Lightweight serializer for menu item search results.
+    
+    Returns only essential fields needed for frontend search functionality:
+    - id: Menu item identifier for navigation/linking
+    - name: Item name for display
+    - image: Image URL for visual display (optional)
+    
+    This serializer is optimized for quick search responses and reduces
+    payload size compared to the full MenuItemSerializer.
+    
+    Example Response:
+    {
+        "id": 1,
+        "name": "Margherita Pizza",
+        "image": "/media/menu_images/pizza.jpg"
+    }
+    """
+    image = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = MenuItem
+        fields = ['id', 'name', 'image']
+        read_only_fields = ['id', 'name', 'image']
+    
+    def get_image(self, obj):
+        """
+        Return the full URL for the image if it exists, otherwise None.
+        """
+        if obj.image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
+

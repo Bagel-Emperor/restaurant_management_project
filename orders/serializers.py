@@ -1450,3 +1450,38 @@ class DriverAvailabilitySerializer(serializers.Serializer):
             'is_available': is_available,
             'availability_status': instance.availability_status
         }
+
+
+# ================================
+# ORDER STATUS RETRIEVAL SERIALIZER
+# ================================
+
+class OrderStatusRetrievalSerializer(serializers.ModelSerializer):
+    """
+    Serializer for retrieving order status information.
+    
+    Provides a lightweight response focused on order status tracking,
+    including the order ID, current status name, and last update timestamp.
+    Designed for frontend order tracking interfaces and status polling.
+    
+    Fields:
+        - order_id: Unique alphanumeric order identifier
+        - status: Current order status name (e.g., 'Pending', 'Processing')
+        - updated_at: Timestamp of last status update
+        - created_at: Timestamp when order was created
+    
+    Example Response:
+        {
+            "order_id": "ORD-A7X9K2M5",
+            "status": "Processing",
+            "updated_at": "2025-10-23T15:30:00Z",
+            "created_at": "2025-10-23T14:00:00Z"
+        }
+    """
+    status = serializers.CharField(source='status.name', read_only=True)
+    
+    class Meta:
+        model = Order
+        fields = ['order_id', 'status', 'updated_at', 'created_at']
+        read_only_fields = ['order_id', 'status', 'updated_at', 'created_at']
+

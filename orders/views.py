@@ -16,7 +16,8 @@ from .serializers import (
     UserProfileSerializer, OrderDetailSerializer, RideSerializer, 
     RideRequestSerializer, UpdateOrderStatusSerializer,
     FareCalculationSerializer, RidePaymentSerializer,
-    DriverEarningsSerializer, DriverAvailabilitySerializer
+    DriverEarningsSerializer, DriverAvailabilitySerializer,
+    OrderStatusRetrievalSerializer
 )
 from .choices import OrderStatusChoices
 import logging
@@ -1388,6 +1389,62 @@ def get_order_status(request, order_id):
 			'error': 'Order not found',
 			'order_id': order_id
 		}, status=status.HTTP_404_NOT_FOUND)
+
+
+# ================================
+# ORDER STATUS RETRIEVAL API VIEW (CLASS-BASED)
+# ================================
+
+class OrderStatusRetrieveView(generics.RetrieveAPIView):
+	"""
+	API endpoint to retrieve the current status of an order by its unique order ID.
+	
+	This class-based view provides a RESTful interface for fetching order status information
+	using Django REST Framework's RetrieveAPIView. Unlike the function-based view above,
+	this provides automatic serialization, better separation of concerns, and follows
+	DRF best practices.
+	
+	**Endpoint:** GET /api/orders/status/<order_id>/
+	
+	**Authentication:** Public access (AllowAny) - Customers can track orders with order ID
+	
+	**URL Parameters:**
+		- order_id (str): The unique alphanumeric order identifier (e.g., "ORD-A7X9K2M5")
+	
+	**Response Format:**
+		{
+			"order_id": "ORD-A7X9K2M5",
+			"status": "Processing",
+			"updated_at": "2024-01-15T14:30:00Z",
+			"created_at": "2024-01-15T14:00:00Z"
+		}
+	
+	**Status Codes:**
+		- 200 OK: Order found, status returned
+		- 404 NOT FOUND: Order with given order_id does not exist
+	
+	**Example Usage:**
+		GET /api/orders/status/ORD-A7X9K2M5/
+		
+		Response:
+		{
+			"order_id": "ORD-A7X9K2M5",
+			"status": "Completed",
+			"updated_at": "2024-01-15T15:45:00Z",
+			"created_at": "2024-01-15T14:00:00Z"
+		}
+	
+	**Implementation Details:**
+		- Uses select_related('status') for optimized database queries
+		- Looks up orders by order_id field instead of primary key
+		- Returns human-readable status name instead of status ID
+		- Automatically handles 404 errors for non-existent orders
+	"""
+	
+	queryset = Order.objects.select_related('status').all()
+	serializer_class = OrderStatusRetrievalSerializer
+	permission_classes = [permissions.AllowAny]
+	lookup_field = 'order_id'
 
 
 # ================================

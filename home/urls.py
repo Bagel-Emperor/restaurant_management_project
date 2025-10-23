@@ -6,7 +6,8 @@ from .views import (
     restaurant_info,
     create_menu_item, list_menu_items, get_menu_item, update_menu_item, delete_menu_item,
     MenuCategoryViewSet, MenuItemViewSet, DailySpecialsAPIView, UserReviewViewSet,
-    RestaurantReviewsListView,  # New paginated reviews endpoint
+    RestaurantReviewsListView,  # Paginated reviews endpoint
+    RestaurantOpeningHoursView,  # Opening hours endpoint
     # Cart API views
     cart_summary, add_to_cart_api, remove_from_cart_api, update_cart_item_api, clear_cart_api,
     # Contact form API view
@@ -48,6 +49,9 @@ urlpatterns = [
     
     # API endpoint for comprehensive restaurant information
     path('api/restaurant-info/', restaurant_info, name='restaurant-info'),
+    
+    # API endpoint for restaurant opening hours
+    path('api/opening-hours/', RestaurantOpeningHoursView.as_view(), name='opening-hours'),
 
     # API endpoint for daily specials
     path('api/daily-specials/', DailySpecialsAPIView.as_view(), name='daily-specials'),

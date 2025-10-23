@@ -22,6 +22,7 @@ from .serializers import (
     TableSerializer,
     DailySpecialSerializer,
     UserReviewSerializer,
+    RestaurantOpeningHoursSerializer,
 )
 
 # Email configuration constants
@@ -1453,4 +1454,84 @@ class RestaurantReviewsListView(ListAPIView):
                    request.query_params.get('page', 1), 
                    dict(request.query_params))
         return super().list(request, *args, **kwargs)
+
+
+# ================================
+# RESTAURANT OPENING HOURS API
+# ================================
+
+class RestaurantOpeningHoursView(RetrieveAPIView):
+    """
+    API endpoint to retrieve restaurant opening hours.
+    
+    URL: GET /api/opening-hours/
+    
+    Features:
+    - Public access (no authentication required)
+    - Returns opening hours for the main restaurant
+    - Simple, focused response with just hours information
+    - Includes restaurant name for context
+    
+    Response Format:
+    {
+        "restaurant_name": "Perpex Bistro",
+        "opening_hours": {
+            "Monday": "9:00 AM - 10:00 PM",
+            "Tuesday": "9:00 AM - 10:00 PM",
+            "Wednesday": "9:00 AM - 10:00 PM",
+            "Thursday": "9:00 AM - 11:00 PM",
+            "Friday": "9:00 AM - 11:00 PM",
+            "Saturday": "10:00 AM - 11:00 PM",
+            "Sunday": "10:00 AM - 9:00 PM"
+        }
+    }
+    
+    Error Responses:
+    - 404: Restaurant not found in database
+    
+    Usage:
+    This endpoint is ideal for displaying opening hours on the website
+    header, footer, or a dedicated hours page without fetching all
+    restaurant information.
+    """
+    queryset = Restaurant.objects.all()
+    serializer_class = RestaurantOpeningHoursSerializer
+    permission_classes = [permissions.AllowAny]  # Public access
+    
+    def get_object(self):
+        """
+        Return the first (main) restaurant.
+        Override to get the main restaurant instead of requiring an ID.
+        """
+        restaurant = Restaurant.objects.first()
+        if not restaurant:
+            logger.warning("Opening hours requested but no restaurant exists in database")
+        return restaurant
+    
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Override retrieve to add custom error handling and logging.
+        """
+        try:
+            instance = self.get_object()
+            if not instance:
+                return Response(
+                    {
+                        'error': 'Restaurant not found. Please contact support.'
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            serializer = self.get_serializer(instance)
+            logger.info('Opening hours retrieved successfully')
+            return Response(serializer.data)
+            
+        except Exception as e:
+            logger.error(f'Error retrieving opening hours: {str(e)}')
+            return Response(
+                {
+                    'error': 'Unable to retrieve opening hours. Please try again later.'
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 

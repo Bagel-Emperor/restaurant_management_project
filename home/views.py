@@ -25,6 +25,7 @@ from .serializers import (
     UserReviewSerializer,
     RestaurantOpeningHoursSerializer,
     MenuItemSearchSerializer,
+    IngredientSerializer,
 )
 
 # Email configuration constants
@@ -186,86 +187,78 @@ class FeaturedMenuItemsView(ListAPIView):
 
 
 class MenuItemIngredientsView(generics.RetrieveAPIView):
-	"""
-	API endpoint to retrieve all ingredients for a specific menu item.
-	
-	Returns a list of ingredients associated with a given MenuItem ID, including
-	dietary information (allergen, vegetarian, vegan flags). Useful for customers
-	with dietary restrictions or preferences.
-	
-	- Public endpoint (no authentication required)
-	- Returns 404 if menu item doesn't exist
-	- Returns empty list if menu item has no ingredients
-	
-	Response Fields:
-	- id: MenuItem identifier
-	- name: Menu item name
-	- ingredients: Array of ingredient objects with:
-		* id: Ingredient identifier
-		* name: Ingredient name
-		* description: Optional ingredient details
-		* is_allergen: Boolean indicating if common allergen
-		* is_vegetarian: Boolean indicating if vegetarian
-		* is_vegan: Boolean indicating if vegan
-	
-	Example Response:
-	{
-		"id": 5,
-		"name": "Caesar Salad",
-		"ingredients": [
-			{
-				"id": 1,
-				"name": "Romaine Lettuce",
-				"description": "Fresh romaine lettuce",
-				"is_allergen": false,
-				"is_vegetarian": true,
-				"is_vegan": true
-			},
-			{
-				"id": 2,
-				"name": "Parmesan Cheese",
-				"description": "Aged parmesan",
-				"is_allergen": true,
-				"is_vegetarian": true,
-				"is_vegan": false
-			}
-		]
-	}
-	
-	Usage:
-		GET /api/menu-items/<id>/ingredients/
-	"""
-	permission_classes = [permissions.AllowAny]  # Public endpoint
-	lookup_field = 'pk'
-	
-	def get_queryset(self):
-		"""Optimize query with prefetch_related for ingredients."""
-		return MenuItem.objects.prefetch_related('ingredients')
-	
-	def retrieve(self, request, *args, **kwargs):
-		"""
-		Retrieve menu item with its ingredients.
-		Returns 404 if menu item doesn't exist.
-		"""
-		from .serializers import IngredientSerializer
-		
-		try:
-			menu_item = self.get_object()
-		except MenuItem.DoesNotExist:
-			return Response(
-				{'error': 'Menu item not found'},
-				status=status.HTTP_404_NOT_FOUND
-			)
-		
-		# Serialize the ingredients
-		ingredients = menu_item.ingredients.all()
-		serializer = IngredientSerializer(ingredients, many=True)
-		
-		return Response({
-			'id': menu_item.id,
-			'name': menu_item.name,
-			'ingredients': serializer.data
-		})
+    """
+    API endpoint to retrieve all ingredients for a specific menu item.
+    
+    Returns a list of ingredients associated with a given MenuItem ID, including
+    dietary information (allergen, vegetarian, vegan flags). Useful for customers
+    with dietary restrictions or preferences.
+    
+    - Public endpoint (no authentication required)
+    - Returns 404 if menu item doesn't exist
+    - Returns empty list if menu item has no ingredients
+    
+    Response Fields:
+    - id: MenuItem identifier
+    - name: Menu item name
+    - ingredients: Array of ingredient objects with:
+        * id: Ingredient identifier
+        * name: Ingredient name
+        * description: Optional ingredient details
+        * is_allergen: Boolean indicating if common allergen
+        * is_vegetarian: Boolean indicating if vegetarian
+        * is_vegan: Boolean indicating if vegan
+    
+    Example Response:
+    {
+        "id": 5,
+        "name": "Caesar Salad",
+        "ingredients": [
+            {
+                "id": 1,
+                "name": "Romaine Lettuce",
+                "description": "Fresh romaine lettuce",
+                "is_allergen": false,
+                "is_vegetarian": true,
+                "is_vegan": true
+            },
+            {
+                "id": 2,
+                "name": "Parmesan Cheese",
+                "description": "Aged parmesan",
+                "is_allergen": true,
+                "is_vegetarian": true,
+                "is_vegan": false
+            }
+        ]
+    }
+    
+    Usage:
+        GET /api/menu-items/<id>/ingredients/
+    """
+    permission_classes = [permissions.AllowAny]  # Public endpoint
+    lookup_field = 'pk'
+    
+    def get_queryset(self):
+        """Optimize query with prefetch_related for ingredients."""
+        return MenuItem.objects.prefetch_related('ingredients')
+    
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieve menu item with its ingredients.
+        Returns 404 if menu item doesn't exist (handled by DRF get_object()).
+        """
+        menu_item = self.get_object()
+        
+        # Serialize the ingredients
+        ingredients = menu_item.ingredients.all()
+        serializer = IngredientSerializer(ingredients, many=True)
+        
+        return Response({
+            'id': menu_item.id,
+            'name': menu_item.name,
+            'ingredients': serializer.data
+        })
 
 
 class MenuItemViewSet(viewsets.ModelViewSet):

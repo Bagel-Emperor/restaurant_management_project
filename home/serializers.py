@@ -12,23 +12,23 @@ class MenuCategorySerializer(serializers.ModelSerializer):
 
 # Serializer for Ingredient
 class IngredientSerializer(serializers.ModelSerializer):
-	"""
-	Serializer for Ingredient model.
-	
-	Provides detailed information about ingredients including dietary flags
-	(allergen, vegetarian, vegan) to help customers make informed choices.
-	"""
-	class Meta:
-		model = Ingredient
-		fields = [
-			'id',
-			'name',
-			'description',
-			'is_allergen',
-			'is_vegetarian',
-			'is_vegan'
-		]
-		read_only_fields = ['id']
+    """
+    Serializer for Ingredient model.
+    
+    Provides detailed information about ingredients including dietary flags
+    (allergen, vegetarian, vegan) to help customers make informed choices.
+    """
+    class Meta:
+        model = Ingredient
+        fields = [
+            'id',
+            'name',
+            'description',
+            'is_allergen',
+            'is_vegetarian',
+            'is_vegan'
+        ]
+        read_only_fields = ['id']
 
 
 class RestaurantSerializer(serializers.ModelSerializer):

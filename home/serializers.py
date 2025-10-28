@@ -1,13 +1,35 @@
 from rest_framework import serializers
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
-from .models import Restaurant, RestaurantLocation, MenuItem, MenuCategory, ContactSubmission, Table, UserReview
+from .models import Restaurant, RestaurantLocation, MenuItem, MenuCategory, ContactSubmission, Table, UserReview, Ingredient
 
 # Serializer for MenuCategory
 class MenuCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = MenuCategory
         fields = ['id', 'name', 'description']
+
+
+# Serializer for Ingredient
+class IngredientSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Ingredient model.
+    
+    Provides detailed information about ingredients including dietary flags
+    (allergen, vegetarian, vegan) to help customers make informed choices.
+    """
+    class Meta:
+        model = Ingredient
+        fields = [
+            'id',
+            'name',
+            'description',
+            'is_allergen',
+            'is_vegetarian',
+            'is_vegan'
+        ]
+        read_only_fields = ['id']
+
 
 class RestaurantSerializer(serializers.ModelSerializer):
     class Meta:

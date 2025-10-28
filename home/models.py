@@ -60,6 +60,50 @@ class RestaurantLocation(models.Model):
 
 	def __str__(self):
 		return f"{self.address}, {self.city}, {self.state} {self.zip_code}"
+
+class MenuItemManager(models.Manager):
+	"""
+	Custom manager for MenuItem model with enhanced query methods.
+	
+	Provides specialized queries for menu items, including the ability to
+	retrieve top-selling items based on order history.
+	"""
+	
+	def get_top_selling_items(self, num_items=5):
+		"""
+		Retrieve the top-selling menu items based on total quantity ordered.
+		
+		This method analyzes all OrderItem records to determine which menu items
+		have been ordered the most frequently (by total quantity, not just order count).
+		Items are ranked by the sum of quantities across all orders.
+		
+		Args:
+			num_items (int): Number of top-selling items to return. Defaults to 5.
+		
+		Returns:
+			QuerySet: Menu items annotated with 'total_ordered' (sum of quantities),
+					  ordered by total_ordered in descending order, limited to num_items.
+		
+		Example:
+			>>> # Get top 5 selling items
+			>>> top_items = MenuItem.objects.get_top_selling_items()
+			>>> for item in top_items:
+			...     print(f"{item.name}: {item.total_ordered} orders")
+			
+			>>> # Get top 10 selling items
+			>>> top_10 = MenuItem.objects.get_top_selling_items(num_items=10)
+		
+		Notes:
+			- Items with no orders will have total_ordered = 0
+			- Uses Django's Sum aggregation on the orderitem reverse relationship
+			- Efficient single-query implementation using annotate()
+		"""
+		from django.db.models import Sum
+		
+		return self.annotate(
+			total_ordered=Sum('orderitem__quantity', default=0)
+		).order_by('-total_ordered')[:num_items]
+
 class MenuItem(models.Model):
 	name = models.CharField(max_length=100)
 	description = models.TextField(blank=True)
@@ -87,6 +131,9 @@ class MenuItem(models.Model):
 	)
 	created_at = models.DateTimeField(auto_now_add=True)
 	image = models.ImageField(upload_to='menu_images/', blank=True, null=True)
+
+	# Custom manager for enhanced queries
+	objects = MenuItemManager()
 
 	def __str__(self):
 		return self.name

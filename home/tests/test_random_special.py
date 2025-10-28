@@ -226,8 +226,10 @@ class RandomSpecialMethodTests(TestCase):
         # Check that we got at least 2 different items (statistical test)
         # With 3 items and 30 calls, probability of getting only 1 item is extremely low
         unique_items = set(results)
-        self.assertGreaterEqual(len(unique_items), 2,
-                                "Random selection should return different items over multiple calls")
+        self.assertGreaterEqual(
+            len(unique_items), 2,
+            "Random selection should return different items over multiple calls"
+        )
     
     def test_all_returned_items_are_valid(self):
         """Test that all returned items meet the criteria over multiple calls."""

@@ -103,6 +103,38 @@ class MenuItemManager(models.Manager):
 		return self.annotate(
 			total_ordered=Sum('orderitem__quantity', default=0)
 		).order_by('-total_ordered')[:num_items]
+	
+	def get_random_special(self):
+		"""
+		Retrieve a single random daily special from available menu items.
+		
+		This method fetches one daily special at random, useful for dynamically
+		displaying a 'Special of the Day' on the homepage or promotional areas
+		without manual selection. Only returns items that are both marked as
+		daily specials (is_daily_special=True) and currently available.
+		
+		Returns:
+			MenuItem or None: A randomly selected daily special item, or None if
+							  no daily specials are available.
+		
+		Example:
+			>>> # Get a random daily special for homepage display
+			>>> special = MenuItem.objects.get_random_special()
+			>>> if special:
+			...     print(f"Today's Special: {special.name} - ${special.price}")
+			... else:
+			...     print("No specials available today")
+		
+		Notes:
+			- Only returns items where is_daily_special=True AND is_available=True
+			- Uses order_by('?') for random selection (suitable for small datasets)
+			- Returns None if no daily specials exist or all are unavailable
+			- For large datasets, consider more efficient randomization methods
+		"""
+		return self.filter(
+			is_daily_special=True,
+			is_available=True
+		).order_by('?').first()
 
 class MenuItem(models.Model):
 	name = models.CharField(max_length=100)

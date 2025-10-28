@@ -95,10 +95,10 @@ class MenuItemManager(models.Manager):
 		
 		Notes:
 			- Items with no orders will have total_ordered = 0
-			- Uses Django's Count aggregation on the orderitem reverse relationship
+			- Uses Django's Sum aggregation on the orderitem reverse relationship
 			- Efficient single-query implementation using annotate()
 		"""
-		from django.db.models import Sum, Q
+		from django.db.models import Sum
 		
 		return self.annotate(
 			total_ordered=Sum('orderitem__quantity', default=0)

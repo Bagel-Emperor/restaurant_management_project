@@ -17,7 +17,8 @@ from .serializers import (
     RideRequestSerializer, UpdateOrderStatusSerializer,
     FareCalculationSerializer, RidePaymentSerializer,
     DriverEarningsSerializer, DriverAvailabilitySerializer,
-    OrderStatusRetrievalSerializer
+    OrderStatusRetrievalSerializer, LocationInputSerializer, NearbyDriverSerializer,
+    RideHistoryFilterSerializer, AdminRideHistorySerializer, TripReceiptSerializer
 )
 from .choices import OrderStatusChoices
 import logging
@@ -1948,3 +1949,374 @@ class DriverAvailabilityToggleView(APIView):
 				'message': 'An error occurred while updating availability',
 				'error_code': 'INTERNAL_ERROR'
 			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ================================
+# TASK 14B: NEARBY DRIVERS API VIEW
+# ================================
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def get_nearby_drivers(request):
+	"""
+	API endpoint to fetch nearby available drivers for ride matching.
+	
+	This endpoint allows authenticated riders to find available drivers within
+	their vicinity for ride requests. It validates the user's location coordinates,
+	filters available drivers, calculates distances using the Haversine formula,
+	and returns the closest drivers sorted by proximity.
+	
+	**Endpoint:** POST /api/rider/nearby-drivers/
+	
+	**Authentication:** Required - Only authenticated users
+	
+	**Authorization:** Rider role required - Drivers cannot access this endpoint
+	
+	**Request Body:**
+		{
+			"latitude": 12.9716,
+			"longitude": 77.5946
+		}
+	
+	**Response Format (Success):**
+		[
+			{
+				"driver_id": 4,
+				"name": "Amit Kumar",
+				"distance_km": 1.23
+			},
+			{
+				"driver_id": 2,
+				"name": "Fatima Ali",
+				"distance_km": 2.01
+			}
+		]
+	
+	**Status Codes:**
+		- 200 OK: Nearby drivers found and returned
+		- 400 BAD REQUEST: Invalid location coordinates
+		- 403 FORBIDDEN: User is not a rider or not authenticated
+	
+	**Security Considerations:**
+		- Only riders can access this endpoint (not drivers)
+		- Requires user authentication to prevent abuse
+		- Location data is validated for realistic coordinate ranges
+	
+	**Performance Notes:**
+		- Returns maximum 5 drivers by default for optimal response times
+		- Uses efficient database filtering and distance calculations
+		- Optimized for real-time ride matching scenarios
+	
+	**Example Usage:**
+		POST /api/rider/nearby-drivers/
+		Headers: Authorization: Token <auth_token>
+		Body: {"latitude": 12.9716, "longitude": 77.5946}
+		
+		Response: [{"driver_id": 3, "name": "Driver Name", "distance_km": 1.5}]
+	
+	**Error Responses:**
+		403 Forbidden:
+		{
+			"error": "Only riders can fetch nearby drivers."
+		}
+		
+		400 Bad Request:
+		{
+			"latitude": ["Ensure this value is less than or equal to 90.0."],
+			"longitude": ["This field is required."]
+		}
+	"""
+	
+	# Get authenticated user
+	user = request.user
+	
+	# Verify user has rider profile (authorization check)
+	if not hasattr(user, "rider_profile"):
+		logger.warning(f"Non-rider user {user.username} attempted to access nearby drivers")
+		return Response({
+			"error": "Only riders can fetch nearby drivers."
+		}, status=status.HTTP_403_FORBIDDEN)
+	
+	# Validate location input using LocationInputSerializer
+	serializer = LocationInputSerializer(data=request.data)
+	
+	if serializer.is_valid():
+		# Extract validated coordinates
+		lat = serializer.validated_data["latitude"]
+		lon = serializer.validated_data["longitude"]
+		
+		# Find nearby drivers using the NearbyDriverSerializer logic
+		nearby = NearbyDriverSerializer.get_nearby_drivers(lat, lon, max_results=5)
+		
+		logger.info(f"Rider {user.username} found {len(nearby)} nearby drivers at location ({lat}, {lon})")
+		
+		# Return the list of nearby drivers
+		return Response(nearby, status=status.HTTP_200_OK)
+	
+	# Return validation errors for invalid coordinates
+	logger.warning(f"Rider {user.username} provided invalid coordinates: {serializer.errors}")
+	return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ================================
+# TASK 15B: ADMIN RIDE HISTORY VIEW
+# ================================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_ride_history(request):
+	"""
+	API endpoint for admin users to fetch ride history with flexible filtering.
+	
+	This endpoint allows authenticated admin users to query historical ride data
+	for monitoring, auditing, and analytics purposes. It supports filtering by
+	date ranges, ride status, and specific drivers, making it a powerful tool
+	for administrative oversight and reporting.
+	
+	**Endpoint:** GET /api/admin/ride-history/
+	
+	**Authentication:** Required - Only authenticated admin users
+	
+	**Authorization:** Admin role required - Regular users cannot access
+	
+	**Query Parameters (All Optional):**
+		- start_date (date): Filter rides from this date onwards (YYYY-MM-DD)
+		- end_date (date): Filter rides up to this date (YYYY-MM-DD)
+		- status (str): Filter by ride status (COMPLETED or CANCELLED)
+		- driver_id (int): Filter rides by specific driver ID
+	
+	**Response Format (Success):**
+		[
+			{
+				"ride_id": 14,
+				"rider": "Maya Sharma",
+				"driver": "Rakesh Kumar",
+				"status": "COMPLETED",
+				"fare": 295.75,
+				"payment_method": "CASH",
+				"completed_at": "2025-07-07T12:34:00Z"
+			},
+			...
+		]
+	
+	**Status Codes:**
+		- 200 OK: Ride history successfully retrieved
+		- 400 BAD REQUEST: Invalid filter parameters
+		- 403 FORBIDDEN: User is not an admin
+	
+	**Security Considerations:**
+		- Only admin/staff users can access this endpoint
+		- Requires authentication to prevent unauthorized data access
+		- All query parameters validated before database queries
+	
+	**Performance Notes:**
+		- Uses efficient database filtering with indexed fields
+		- Optimized for large datasets with proper query construction
+		- Future enhancement: Add pagination for very large result sets
+	
+	**Example Usage:**
+		GET /api/admin/ride-history/?start_date=2025-07-01&end_date=2025-07-10&status=COMPLETED
+		Headers: Authorization: Token <admin_auth_token>
+		
+		Response: [{"ride_id": 103, "rider": "User Name", "driver": "Driver Name", ...}]
+	
+	**Example Queries:**
+		- All completed rides: ?status=COMPLETED
+		- Specific driver's rides: ?driver_id=7
+		- Date range rides: ?start_date=2025-07-01&end_date=2025-07-31
+		- Combined filters: ?status=COMPLETED&driver_id=7&start_date=2025-07-01
+	
+	**Error Responses:**
+		403 Forbidden:
+		{
+			"error": "Only admin users can access ride history."
+		}
+		
+		400 Bad Request:
+		{
+			"non_field_errors": ["Start date must be before or equal to end date."]
+		}
+	
+	**Scalability & Future Enhancements:**
+		- Add pagination support for large datasets
+		- Implement aggregation (total revenue, ride count)
+		- Add CSV export functionality for reporting
+		- Include chart data grouping for analytics dashboards
+	"""
+	
+	# Get authenticated user
+	user = request.user
+	
+	# Check if user is admin/staff
+	if not user.is_staff:
+		logger.warning(f"Non-admin user {user.username} attempted to access admin ride history")
+		return Response(
+			{"error": "Only admin users can access ride history."},
+			status=status.HTTP_403_FORBIDDEN
+		)
+	
+	# Validate filter parameters using RideHistoryFilterSerializer
+	filter_serializer = RideHistoryFilterSerializer(data=request.query_params)
+	
+	if not filter_serializer.is_valid():
+		logger.warning(f"Admin {user.username} provided invalid filter parameters: {filter_serializer.errors}")
+		return Response(filter_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+	
+	# Extract validated filter parameters
+	filters = filter_serializer.validated_data
+	
+	# Start with all rides
+	rides = Ride.objects.all()
+	
+	# Apply status filter if provided
+	if "status" in filters:
+		rides = rides.filter(status=filters["status"])
+		logger.debug(f"Filtering by status: {filters['status']}")
+	
+	# Apply driver_id filter if provided
+	if "driver_id" in filters:
+		rides = rides.filter(driver_id=filters["driver_id"])
+		logger.debug(f"Filtering by driver_id: {filters['driver_id']}")
+	
+	# Apply start_date filter if provided (rides completed on or after this date)
+	if "start_date" in filters:
+		rides = rides.filter(completed_at__date__gte=filters["start_date"])
+		logger.debug(f"Filtering by start_date >= {filters['start_date']}")
+	
+	# Apply end_date filter if provided (rides completed on or before this date)
+	if "end_date" in filters:
+		rides = rides.filter(completed_at__date__lte=filters["end_date"])
+		logger.debug(f"Filtering by end_date <= {filters['end_date']}")
+	
+	
+	# Order by most recent completed rides first
+	rides = rides.order_by('-completed_at')
+	
+	# Serialize the filtered ride data for admin display
+	serializer = AdminRideHistorySerializer(rides, many=True)
+	
+	logger.info(f"Admin {user.username} fetched {len(serializer.data)} rides with filters: {filters}")
+	
+	# Return the structured ride history data
+	return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# ============================================================================
+# TASK 16B: TRIP RECEIPT VIEW
+# ============================================================================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def trip_receipt_view(request, ride_id):
+	"""
+	Retrieve structured trip receipt for a completed ride.
+	
+	This endpoint allows riders and drivers to view detailed receipts for
+	completed rides. Receipts include rider/driver names, route information,
+	fare breakdown, payment method, and completion timestamp. Designed for
+	frontend display, PDF generation, or email delivery.
+	
+	**Business Rules:**
+		- Only COMPLETED rides can generate receipts
+		- Access restricted to ride's rider OR assigned driver
+		- Returns 404 if ride doesn't exist
+		- Returns 400 if ride is not completed
+		- Returns 403 if user is not rider/driver
+	
+	**Authentication:**
+		Requires valid JWT authentication token.
+	
+	**URL Parameters:**
+		- ride_id (int): Database ID of the ride to retrieve receipt for
+	
+	**Example Request:**
+		GET /PerpexBistro/orders/ride/receipt/103/
+		Headers:
+			Authorization: Bearer <jwt_token>
+	
+	**Success Response (200 OK):**
+		{
+			"ride_id": 103,
+			"rider": "Amit",
+			"driver": "Riya",
+			"origin": "Koramangala, Bangalore",
+			"destination": "Marathahalli, Bangalore",
+			"fare": "310.75",
+			"payment_method": "UPI",
+			"status": "COMPLETED",
+			"completed_at": "2025-07-10T15:32:00Z"
+		}
+	
+	**Error Responses:**
+		- 401 Unauthorized: Missing or invalid authentication token
+		- 403 Forbidden: User is neither rider nor driver of this ride
+		- 404 Not Found: Ride with specified ID does not exist
+		- 400 Bad Request: Ride is not completed (status != COMPLETED)
+	
+	**Use Cases:**
+		- Display receipt in user's ride history screen
+		- Generate PDF receipts for download
+		- Send email receipts after ride completion
+		- Driver proof of completed jobs
+		- Financial audit trails
+		- Customer support documentation
+	
+	**Frontend Integration:**
+		```javascript
+		// Fetch receipt for ride ID 103
+		fetch('/PerpexBistro/orders/ride/receipt/103/', {
+			headers: {
+				'Authorization': `Bearer ${token}`
+			}
+		})
+		.then(res => res.json())
+		.then(receipt => displayReceipt(receipt));
+		```
+	
+	**Security Notes:**
+		- Users can only access receipts for rides they participated in
+		- Prevents unauthorized access to other users' billing information
+		- Validates ride completion before exposing financial data
+	
+	**Args:**
+		request (Request): Django REST Framework request object with user
+		ride_id (int): Primary key of the Ride to retrieve receipt for
+	
+	**Returns:**
+		Response: JSON response with receipt data or error message
+	
+	**Raises:**
+		None (all errors returned as Response objects)
+	"""
+	# Validate ride existence
+	try:
+		ride = Ride.objects.get(id=ride_id)
+	except Ride.DoesNotExist:
+		return Response(
+			{"error": "Ride not found."},
+			status=status.HTTP_404_NOT_FOUND
+		)
+	
+	# Validate ride completion status
+	if ride.status != "COMPLETED":
+		return Response(
+			{"error": "Receipt can only be generated for completed rides."},
+			status=status.HTTP_400_BAD_REQUEST
+		)
+	
+	# Validate user authorization (rider OR driver)
+	user = request.user
+	is_rider = ride.rider and ride.rider.user == user
+	is_driver = ride.driver and ride.driver.user == user
+	
+	if not (is_rider or is_driver):
+		return Response(
+			{"error": "You are not authorized to view this receipt."},
+			status=status.HTTP_403_FORBIDDEN
+		)
+	
+	# Serialize and return receipt
+	serializer = TripReceiptSerializer(ride)
+	return Response(serializer.data, status=status.HTTP_200_OK)
+
+

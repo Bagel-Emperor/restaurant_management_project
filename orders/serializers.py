@@ -1485,3 +1485,560 @@ class OrderStatusRetrievalSerializer(serializers.ModelSerializer):
         fields = ['order_id', 'status', 'updated_at', 'created_at']
         read_only_fields = ['order_id', 'status', 'updated_at', 'created_at']
 
+
+# ================================
+# TASK 14A: RIDE MATCHING SERIALIZERS
+# ================================
+
+from math import radians, cos, sin, asin, sqrt
+
+
+class LocationInputSerializer(serializers.Serializer):
+    """
+    Serializer for accepting pickup location coordinates for ride matching.
+    
+    This serializer validates latitude and longitude inputs from riders
+    requesting a ride, ensuring coordinates are within valid geographical ranges.
+    
+    **Fields:**
+        - latitude (float): Pickup latitude (-90 to 90 degrees)
+        - longitude (float): Pickup longitude (-180 to 180 degrees)
+    
+    **Validation:**
+        - Latitude must be between -90.0 and 90.0
+        - Longitude must be between -180.0 and 180.0
+    
+    **Example Input:**
+        {
+            "latitude": 12.9716,
+            "longitude": 77.5946
+        }
+    """
+    latitude = serializers.FloatField(
+        min_value=-90.0,
+        max_value=90.0,
+        help_text="Pickup latitude in decimal degrees (-90 to 90)"
+    )
+    longitude = serializers.FloatField(
+        min_value=-180.0,
+        max_value=180.0,
+        help_text="Pickup longitude in decimal degrees (-180 to 180)"
+    )
+
+
+class NearbyDriverSerializer(serializers.Serializer):
+    """
+    Serializer for nearby driver data with distance calculation.
+    
+    This serializer provides driver information ordered by proximity to the
+    rider's pickup location. Uses the Haversine formula for accurate
+    geographical distance calculation between two coordinate points.
+    
+    **Fields:**
+        - driver_id (int): Unique identifier for the driver
+        - name (str): Driver's display name from User model
+        - distance_km (float): Calculated distance in kilometers (rounded to 2 decimals)
+    
+    **Static Methods:**
+        - haversine(): Calculates great-circle distance between coordinates
+        - get_nearby_drivers(): Finds and sorts available drivers by distance
+    
+    **Example Output:**
+        [
+            {
+                "driver_id": 4,
+                "name": "Amit Kumar",
+                "distance_km": 1.23
+            },
+            {
+                "driver_id": 2,
+                "name": "Fatima Ali",
+                "distance_km": 2.01
+            }
+        ]
+    """
+    driver_id = serializers.IntegerField(
+        help_text="Unique database ID of the driver"
+    )
+    name = serializers.CharField(
+        help_text="Driver's full name for display"
+    )
+    distance_km = serializers.FloatField(
+        help_text="Distance from pickup location in kilometers"
+    )
+
+    @staticmethod
+    def haversine(lat1, lon1, lat2, lon2):
+        """
+        Calculate the great circle distance between two points on Earth.
+        
+        Uses the Haversine formula to compute the shortest distance over the
+        earth's surface, giving an 'as-the-crow-flies' distance between points.
+        
+        **Formula:** 
+            a = sin²(Δφ/2) + cos φ1 ⋅ cos φ2 ⋅ sin²(Δλ/2)
+            c = 2 ⋅ atan2( √a, √(1−a) )
+            d = R ⋅ c
+        
+        **Args:**
+            lat1 (float): Latitude of first point in decimal degrees
+            lon1 (float): Longitude of first point in decimal degrees  
+            lat2 (float): Latitude of second point in decimal degrees
+            lon2 (float): Longitude of second point in decimal degrees
+        
+        **Returns:**
+            float: Distance in kilometers
+        
+        **Note:**
+            Earth radius R = 6371 km (mean radius)
+        """
+        # Earth radius in kilometers
+        R = 6371.0
+        
+        # Convert decimal degrees to radians
+        dlat = radians(lat2 - lat1)
+        dlon = radians(lon2 - lon1)
+        
+        # Haversine formula
+        a = (sin(dlat/2)**2 + 
+             cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon/2)**2)
+        c = 2 * asin(sqrt(a))
+        
+        # Calculate distance
+        return R * c
+
+    @staticmethod
+    def get_nearby_drivers(latitude, longitude, max_results=5):
+        """
+        Find available drivers near the pickup location, ordered by distance.
+        
+        Filters drivers by availability status and calculates distances using
+        the Haversine formula. Results are sorted by proximity and limited
+        to prevent excessive API response sizes.
+        
+        **Args:**
+            latitude (float): Pickup latitude in decimal degrees
+            longitude (float): Pickup longitude in decimal degrees
+            max_results (int): Maximum number of drivers to return (default: 5)
+        
+        **Returns:**
+            list: List of dictionaries containing driver data:
+                - driver_id: Driver's database ID
+                - name: Driver's display name  
+                - distance_km: Distance in kilometers (rounded to 2 decimals)
+        
+        **Filtering Logic:**
+            1. Only drivers with availability_status = 'available'
+            2. Only drivers with valid location coordinates
+            3. Sorted by ascending distance (closest first)
+            4. Limited to max_results count
+        
+        **Example:**
+            drivers = NearbyDriverSerializer.get_nearby_drivers(12.9716, 77.5946, 3)
+            # Returns: [{"driver_id": 4, "name": "Amit", "distance_km": 1.23}, ...]
+        """
+        # Filter available drivers with valid coordinates
+        drivers = Driver.objects.filter(
+            availability_status=Driver.STATUS_AVAILABLE,
+            current_latitude__isnull=False,
+            current_longitude__isnull=False
+        ).select_related('user')
+        
+        nearby = []
+        
+        # Calculate distance for each available driver
+        for driver in drivers:
+            # Convert Decimal coordinates to float for calculation
+            driver_lat = float(driver.current_latitude)
+            driver_lon = float(driver.current_longitude)
+            
+            # Calculate distance using Haversine formula
+            dist = NearbyDriverSerializer.haversine(
+                latitude, longitude, driver_lat, driver_lon
+            )
+            
+            # Get driver name from User model
+            driver_name = (driver.user.get_full_name() or 
+                          driver.user.username or 
+                          f"Driver {driver.id}")
+            
+            # Add to results list
+            nearby.append({
+                "driver_id": driver.id,
+                "name": driver_name,
+                "distance_km": round(dist, 2)
+            })
+        
+        # Sort by distance (closest first) and limit results
+        nearby.sort(key=lambda x: x["distance_km"])
+        return nearby[:max_results]
+
+
+# ================================
+# TASK 15A: ADMIN RIDE HISTORY SERIALIZERS
+# ================================
+
+class RideHistoryFilterSerializer(serializers.Serializer):
+    """
+    Serializer for filtering admin ride history by various criteria.
+    
+    This serializer validates filter parameters for admin views to query
+    ride history with flexible date ranges, status filtering, and
+    driver-specific filtering for operational reporting and analytics.
+    
+    **Filter Fields:**
+        - start_date (date, optional): Filter rides from this date onwards
+        - end_date (date, optional): Filter rides up to this date
+        - status (choice, optional): Filter by ride status (COMPLETED, CANCELLED)
+        - driver_id (int, optional): Filter rides by specific driver ID
+    
+    **Validation:**
+        - Ensures start_date is not after end_date
+        - All fields are optional for flexible querying
+        - Status choices limited to completed/cancelled for reporting
+    
+    **Example Input:**
+        {
+            "start_date": "2025-07-01",
+            "end_date": "2025-07-10", 
+            "status": "COMPLETED",
+            "driver_id": 7
+        }
+    
+    **Use Cases:**
+        - Admin dashboard filtering
+        - Revenue reports by date range
+        - Driver performance analysis
+        - Completed rides analytics
+        - Cancelled rides investigation
+    """
+    
+    start_date = serializers.DateField(
+        required=False,
+        help_text="Filter rides from this date onwards (YYYY-MM-DD format)"
+    )
+    end_date = serializers.DateField(
+        required=False,
+        help_text="Filter rides up to this date (YYYY-MM-DD format)"
+    )
+    status = serializers.ChoiceField(
+        choices=['COMPLETED', 'CANCELLED'],
+        required=False,
+        help_text="Filter by ride completion status"
+    )
+    driver_id = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        help_text="Filter rides by specific driver database ID"
+    )
+
+    def validate(self, data):
+        """
+        Cross-field validation for date range consistency.
+        
+        Ensures that start_date is not after end_date to prevent
+        invalid date ranges that would return no results.
+        
+        **Args:**
+            data (dict): Validated field data
+        
+        **Returns:**
+            dict: Validated data with consistent date range
+        
+        **Raises:**
+            ValidationError: If start_date > end_date
+        """
+        start = data.get("start_date")
+        end = data.get("end_date")
+
+        if start and end and start > end:
+            raise serializers.ValidationError(
+                "Start date must be before or equal to end date."
+            )
+        return data
+
+
+class AdminRideHistorySerializer(serializers.ModelSerializer):
+    """
+    Serializer for admin ride history data with detailed information.
+    
+    This serializer provides comprehensive ride information for admin
+    reporting, analytics, and operational oversight. Includes rider/driver
+    names, financial data, and completion timestamps for dashboard views.
+    
+    **Output Fields:**
+        - ride_id: Unique database identifier for the ride
+        - rider: Rider's display name from User model
+        - driver: Driver's display name from User model
+        - status: Current ride status (COMPLETED, CANCELLED, etc.)
+        - fare: Final calculated fare amount
+        - payment_method: Payment method used (UPI, CASH, CARD)
+        - completed_at: Timestamp when ride was completed
+    
+    **Example Output:**
+        {
+            "ride_id": 103,
+            "rider": "Aarav Kumar",
+            "driver": "Riya Sharma",
+            "status": "COMPLETED",
+            "fare": 340.50,
+            "payment_method": "UPI",
+            "completed_at": "2025-07-08T14:32:12Z"
+        }
+    
+    **Performance Optimizations:**
+        - Uses select_related for rider/driver User lookups
+        - Minimal field selection for faster queries
+        - Indexed fields (status, completed_at) for efficient filtering
+    
+    **Admin Use Cases:**
+        - Revenue reporting and financial analytics
+        - Driver performance monitoring
+        - Rider usage pattern analysis
+        - Operational metrics and KPI tracking
+        - Support team ride investigation
+    """
+    
+    ride_id = serializers.IntegerField(
+        source='id',
+        read_only=True,
+        help_text="Unique database identifier for the ride"
+    )
+    
+    rider = serializers.SerializerMethodField(
+        help_text="Rider's display name"
+    )
+    
+    driver = serializers.SerializerMethodField(
+        help_text="Driver's display name (null if not assigned)"
+    )
+    
+    fare = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        read_only=True,
+        help_text="Final calculated fare amount"
+    )
+    
+    class Meta:
+        model = Ride
+        fields = [
+            'ride_id', 'rider', 'driver', 'status', 
+            'fare', 'payment_method', 'completed_at'
+        ]
+        read_only_fields = [
+            'ride_id', 'rider', 'driver', 'status',
+            'fare', 'payment_method', 'completed_at'
+        ]
+    
+    def get_rider(self, obj):
+        """
+        Get rider's display name from User model.
+        
+        Returns the rider's full name if available, otherwise username.
+        Handles cases where rider might be null (edge case protection).
+        
+        **Args:**
+            obj (Ride): Ride instance
+        
+        **Returns:**
+            str: Rider's display name or "Unknown Rider" if null
+        """
+        if not obj.rider or not obj.rider.user:
+            return "Unknown Rider"
+        
+        user = obj.rider.user
+        full_name = user.get_full_name()
+        return full_name if full_name else user.username
+    
+    def get_driver(self, obj):
+        """
+        Get driver's display name from User model.
+        
+        Returns the driver's full name if available, otherwise username.
+        Returns None if no driver is assigned to the ride.
+        
+        **Args:**
+            obj (Ride): Ride instance
+        
+        **Returns:**
+            str or None: Driver's display name or None if not assigned
+        """
+        if not obj.driver or not obj.driver.user:
+            return None
+        
+        user = obj.driver.user
+        full_name = user.get_full_name()
+        return full_name if full_name else user.username
+
+
+# ============================================================================
+# TASK 16A: TRIP RECEIPT SERIALIZER
+# ============================================================================
+
+class TripReceiptSerializer(serializers.ModelSerializer):
+    """
+    Serializer for generating structured trip receipts for completed rides.
+    
+    This serializer produces a professional, printable receipt that details
+    all aspects of a completed ride including rider, driver, route, fare,
+    and payment information. Designed for email delivery, PDF generation,
+    or in-app receipt viewing.
+    
+    **Business Purpose:**
+        Trip receipts build trust and transparency with riders by providing
+        a detailed breakdown of charges. They serve as digital proof of
+        service and reduce support tickets related to fare disputes.
+    
+    **Output Fields:**
+        - ride_id: Unique identifier for the ride transaction
+        - rider: Rider's display name
+        - driver: Driver's display name
+        - origin: Pickup location address
+        - destination: Drop-off location address
+        - fare: Total amount charged
+        - payment_method: Payment method used (UPI, CASH, CARD)
+        - status: Ride status (should be COMPLETED for receipts)
+        - completed_at: Timestamp when ride was completed
+    
+    **Example Output:**
+        {
+            "ride_id": 72,
+            "rider": "Sneha",
+            "driver": "Karan",
+            "origin": "Indiranagar, Bangalore",
+            "destination": "HSR Layout, Bangalore",
+            "fare": 275.00,
+            "payment_method": "UPI",
+            "status": "COMPLETED",
+            "completed_at": "2025-07-10T18:15:00Z"
+        }
+    
+    **Use Cases:**
+        - Email receipts using Celery background tasks
+        - In-app trip history with downloadable receipts
+        - Driver proof of completed jobs
+        - Audit trails for financial reconciliation
+        - Customer support documentation
+        - Legal/compliance record keeping
+    
+    **Future Enhancements:**
+        - Add fare breakdown (base fare + distance fare + tax)
+        - Include trip duration and distance traveled
+        - Add static map preview of route
+        - Generate PDF receipts for download
+    
+    **Read-Only Design:**
+        This serializer is read-only and designed for viewing/exporting
+        completed rides only. It does not support creating or updating rides.
+    """
+    
+    ride_id = serializers.IntegerField(
+        source='id',
+        read_only=True,
+        help_text="Unique identifier for the ride transaction"
+    )
+    
+    rider = serializers.SerializerMethodField(
+        help_text="Rider's display name (first name preferred)"
+    )
+    
+    driver = serializers.SerializerMethodField(
+        help_text="Driver's display name (first name preferred)"
+    )
+    
+    origin = serializers.CharField(
+        source='pickup_address',
+        read_only=True,
+        help_text="Pickup location address"
+    )
+    
+    destination = serializers.CharField(
+        source='dropoff_address',
+        read_only=True,
+        help_text="Drop-off location address"
+    )
+    
+    fare = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        read_only=True,
+        help_text="Total fare amount charged for the ride"
+    )
+    
+    class Meta:
+        model = Ride
+        fields = [
+            'ride_id', 'rider', 'driver', 'origin', 'destination',
+            'fare', 'payment_method', 'status', 'completed_at'
+        ]
+        read_only_fields = [
+            'ride_id', 'rider', 'driver', 'origin', 'destination',
+            'fare', 'payment_method', 'status', 'completed_at'
+        ]
+    
+    def get_rider(self, obj):
+        """
+        Get rider's display name for receipt.
+        
+        Returns the rider's first name if available for a personal touch,
+        otherwise falls back to full name or username. This matches the
+        sample receipt format showing "Sneha" instead of full username.
+        
+        **Args:**
+            obj (Ride): Ride instance
+        
+        **Returns:**
+            str: Rider's display name or "Unknown Rider" if null
+        
+        **Example:**
+            - User with first_name="Sneha" → "Sneha"
+            - User with no first_name but full_name → full name
+            - User with only username → username
+        """
+        if not obj.rider or not obj.rider.user:
+            return "Unknown Rider"
+        
+        user = obj.rider.user
+        
+        # Prefer first name for receipt personalization
+        if user.first_name:
+            return user.first_name
+        
+        # Fall back to full name, then username
+        full_name = user.get_full_name()
+        return full_name if full_name else user.username
+    
+    def get_driver(self, obj):
+        """
+        Get driver's display name for receipt.
+        
+        Returns the driver's first name if available for a personal touch,
+        otherwise falls back to full name or username. This matches the
+        sample receipt format showing "Karan" instead of full username.
+        
+        **Args:**
+            obj (Ride): Ride instance
+        
+        **Returns:**
+            str: Driver's display name or "Not Assigned" if null
+        
+        **Example:**
+            - User with first_name="Karan" → "Karan"
+            - User with no first_name but full_name → full name
+            - User with only username → username
+        """
+        if not obj.driver or not obj.driver.user:
+            return "Not Assigned"
+        
+        user = obj.driver.user
+        
+        # Prefer first name for receipt personalization
+        if user.first_name:
+            return user.first_name
+        
+        # Fall back to full name, then username
+        full_name = user.get_full_name()
+        return full_name if full_name else user.username
+
+

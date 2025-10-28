@@ -130,6 +130,61 @@ class DailySpecialsAPIView(ListAPIView):
         ).select_related('category', 'restaurant').order_by('-created_at')
 
 
+class FeaturedMenuItemsView(ListAPIView):
+    """
+    API endpoint to retrieve featured menu items from the restaurant.
+    
+    Returns a list of menu items that are marked as featured (is_featured=True)
+    and are currently available. Featured items are highlighted dishes that the
+    restaurant wants to showcase prominently on their menu.
+    
+    - Public endpoint (no authentication required)
+    - Filters for items where is_featured=True and is_available=True
+    - Orders by creation date (newest first)
+    - Returns only available featured items
+    - Uses DailySpecialSerializer for consistent response format
+    
+    Response Fields:
+    - id: Menu item unique identifier
+    - name: Item name
+    - description: Item description
+    - price: Item price
+    - category_name: Category name for display
+    - restaurant_name: Restaurant name for display
+    - image: Item image URL (if available)
+    - is_available: Availability status
+    
+    Example Response:
+    [
+        {
+            "id": 5,
+            "name": "Signature Truffle Pasta",
+            "description": "Handmade pasta with black truffle and parmesan",
+            "price": "32.99",
+            "category_name": "Pasta",
+            "restaurant_name": "Perpex Bistro",
+            "image": "/media/menu_images/truffle_pasta.jpg",
+            "is_available": true
+        }
+    ]
+    
+    Usage:
+        GET /api/menu/featured/
+    """
+    serializer_class = DailySpecialSerializer
+    permission_classes = [permissions.AllowAny]  # Public endpoint
+    
+    def get_queryset(self):
+        """
+        Filter menu items to return only featured items that are available.
+        Uses select_related to optimize database queries for category and restaurant.
+        """
+        return MenuItem.objects.filter(
+            is_featured=True,
+            is_available=True
+        ).select_related('category', 'restaurant').order_by('-created_at')
+
+
 class MenuItemViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing menu items with full CRUD operations and comprehensive search.

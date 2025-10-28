@@ -67,6 +67,10 @@ class MenuItem(models.Model):
 	restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='menu_items')
 	category = models.ForeignKey('MenuCategory', on_delete=models.SET_NULL, null=True, blank=True, related_name='menu_items')
 	is_available = models.BooleanField(default=True)
+	is_featured = models.BooleanField(
+		default=False,
+		help_text="Mark this item as featured to highlight it on the menu"
+	)
 	is_daily_special = models.BooleanField(
 		default=False,
 		help_text="Mark this item as a daily special to feature it prominently"

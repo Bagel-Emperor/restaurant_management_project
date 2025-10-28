@@ -5,7 +5,7 @@ from .views import (
     create_restaurant, list_restaurants, get_restaurant, update_restaurant, delete_restaurant,
     restaurant_info,
     create_menu_item, list_menu_items, get_menu_item, update_menu_item, delete_menu_item,
-    MenuCategoryViewSet, MenuItemViewSet, DailySpecialsAPIView, UserReviewViewSet,
+    MenuCategoryViewSet, MenuItemViewSet, DailySpecialsAPIView, FeaturedMenuItemsView, UserReviewViewSet,
     RestaurantReviewsListView,  # Paginated reviews endpoint
     RestaurantOpeningHoursView,  # Opening hours endpoint
     MenuItemSearchView,  # Menu item search endpoint
@@ -56,6 +56,9 @@ urlpatterns = [
 
     # API endpoint for daily specials
     path('api/daily-specials/', DailySpecialsAPIView.as_view(), name='daily-specials'),
+    
+    # API endpoint for featured menu items
+    path('api/menu/featured/', FeaturedMenuItemsView.as_view(), name='featured-menu-items'),
     
     # API endpoint for paginated restaurant reviews
     path('api/restaurant-reviews/', RestaurantReviewsListView.as_view(), name='restaurant-reviews'),

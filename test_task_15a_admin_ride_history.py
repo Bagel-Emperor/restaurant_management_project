@@ -458,7 +458,7 @@ if __name__ == '__main__':
         print(f"\nERRORS ({len(result.errors)}):")
         for test, error in result.errors:
             error_lines = error.split('\n')
-            error_msg = next((line for line in reversed(error_lines) if line.strip() and 'TypeError:' in line or 'Error:' in line), error_lines[-1] if error_lines else 'Unknown error')
+            error_msg = next((line for line in reversed(error_lines) if line.strip() and ('TypeError:' in line or 'Error:' in line)), error_lines[-1] if error_lines else 'Unknown error')
             print(f"- {test}: {error_msg}")
     
     # Exit with appropriate code

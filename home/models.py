@@ -163,6 +163,12 @@ class MenuItem(models.Model):
 	)
 	created_at = models.DateTimeField(auto_now_add=True)
 	image = models.ImageField(upload_to='menu_images/', blank=True, null=True)
+	ingredients = models.ManyToManyField(
+		'Ingredient',
+		related_name='menu_items',
+		blank=True,
+		help_text="Ingredients used in this menu item"
+	)
 
 	# Custom manager for enhanced queries
 	objects = MenuItemManager()
@@ -231,6 +237,32 @@ class MenuCategory(models.Model):
 
 	class Meta:
 		verbose_name_plural = 'Menu Categories'
+
+
+class Ingredient(models.Model):
+	"""
+	Represents an ingredient that can be used in menu items.
+	Used for displaying ingredient lists and managing dietary information.
+	"""
+	name = models.CharField(max_length=100, unique=True)
+	description = models.TextField(blank=True, help_text="Optional description or details about the ingredient")
+	is_allergen = models.BooleanField(
+		default=False,
+		help_text="Mark if this ingredient is a common allergen (nuts, dairy, gluten, etc.)"
+	)
+	is_vegetarian = models.BooleanField(default=True, help_text="Whether this ingredient is vegetarian")
+	is_vegan = models.BooleanField(default=False, help_text="Whether this ingredient is vegan")
+	
+	created_at = models.DateTimeField(auto_now_add=True)
+	updated_at = models.DateTimeField(auto_now=True)
+	
+	class Meta:
+		ordering = ['name']
+		verbose_name = 'Ingredient'
+		verbose_name_plural = 'Ingredients'
+	
+	def __str__(self):
+		return self.name
 
 
 class Cart(models.Model):

@@ -37,12 +37,12 @@ class RestaurantAdmin(admin.ModelAdmin):
 
 
 class UserReviewAdmin(admin.ModelAdmin):
-	"""Admin configuration for UserReview model"""
-	list_display = ['user', 'menu_item', 'rating', 'review_date']
-	list_filter = ['user', 'menu_item', 'rating', 'review_date']
-	search_fields = ['comment', 'user__username', 'menu_item__name']
-	readonly_fields = ['review_date']
-	ordering = ['-review_date']
+    """Admin configuration for UserReview model"""
+    list_display = ('user', 'menu_item', 'rating', 'review_date')
+    list_filter = ('user', 'menu_item', 'rating', 'review_date')
+    search_fields = ('comment', 'user__username', 'menu_item__name')
+    readonly_fields = ('review_date',)
+    ordering = ('-review_date',)
 
 
 admin.site.register(Restaurant, RestaurantAdmin)

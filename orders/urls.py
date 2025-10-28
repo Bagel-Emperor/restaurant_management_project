@@ -22,6 +22,9 @@ from .views import (
     DriverHistoryView,
     UpdateOrderStatusView,
     OrderStatusRetrieveView,  # Class-based view for order status retrieval
+    get_nearby_drivers,  # Task 14B: Nearby drivers for ride matching
+    admin_ride_history,  # Task 15B: Admin ride history with filtering
+    trip_receipt_view,  # Task 16B: Trip receipt view for completed rides
     # Task 10B & 11B: Fare calculation and payment views
     calculate_fare,
     mark_ride_as_paid,
@@ -74,6 +77,15 @@ urlpatterns = [
     # Task 8: Ride history with pagination
     path('rider/history/', RiderHistoryView.as_view(), name='rider-history'),
     path('driver/history/', DriverHistoryView.as_view(), name='driver-history'),
+    
+    # Task 14B: Nearby drivers for ride matching
+    path('rider/nearby-drivers/', get_nearby_drivers, name='nearby-drivers'),
+    
+    # Task 15B: Admin ride history with filtering
+    path('admin/ride-history/', admin_ride_history, name='admin-ride-history'),
+    
+    # Task 16B: Trip receipt view for completed rides
+    path('ride/receipt/<int:ride_id>/', trip_receipt_view, name='trip-receipt'),
     
     # Task 10B: Calculate and store ride fare
     path('ride/calculate-fare/<int:ride_id>/', calculate_fare, name='calculate-fare'),

@@ -19,6 +19,7 @@ class Restaurant(models.Model):
 	created_at = models.DateTimeField(auto_now_add=True)
 	# Store opening hours as a JSON object (e.g., {"Monday": "9am-5pm", ...})
 	opening_hours = models.JSONField(default=dict, blank=True)
+	has_delivery = models.BooleanField(default=False, help_text="Indicates whether the restaurant offers delivery services")
 
 	def __str__(self):
 		return self.name

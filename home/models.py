@@ -266,6 +266,47 @@ class Ingredient(models.Model):
 		return self.name
 
 
+class NutritionalInformation(models.Model):
+	"""
+	Stores nutritional information for menu items.
+	Provides calorie and macronutrient data to help customers make informed dietary choices.
+	"""
+	menu_item = models.ForeignKey(
+		MenuItem,
+		on_delete=models.CASCADE,
+		related_name='nutritional_info',
+		help_text="The menu item this nutritional information belongs to"
+	)
+	calories = models.IntegerField(
+		help_text="Total calories per serving"
+	)
+	protein_grams = models.DecimalField(
+		max_digits=5,
+		decimal_places=2,
+		help_text="Protein content in grams"
+	)
+	fat_grams = models.DecimalField(
+		max_digits=5,
+		decimal_places=2,
+		help_text="Fat content in grams"
+	)
+	carbohydrate_grams = models.DecimalField(
+		max_digits=5,
+		decimal_places=2,
+		help_text="Carbohydrate content in grams"
+	)
+	
+	created_at = models.DateTimeField(auto_now_add=True)
+	updated_at = models.DateTimeField(auto_now=True)
+	
+	class Meta:
+		verbose_name = 'Nutritional Information'
+		verbose_name_plural = 'Nutritional Information'
+	
+	def __str__(self):
+		return f"{self.menu_item.name} - {self.calories} calories"
+
+
 class Cart(models.Model):
 	"""
 	Represents a shopping cart for a user.

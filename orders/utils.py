@@ -822,8 +822,7 @@ def calculate_tip_amount(order_total, tip_percentage):
         - Zero tip percentage returns 0.00
     
     Raises:
-        TypeError: If order_total or tip_percentage cannot be converted to Decimal
-        ValueError: If conversion to Decimal fails (e.g., invalid string input)
+        decimal.InvalidOperation: If order_total or tip_percentage cannot be converted to Decimal
     """
     # Convert inputs to Decimal for precise currency calculations
     order_total = Decimal(str(order_total))

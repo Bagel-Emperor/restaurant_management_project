@@ -278,21 +278,25 @@ class NutritionalInformation(models.Model):
 		help_text="The menu item this nutritional information belongs to"
 	)
 	calories = models.IntegerField(
+		validators=[MinValueValidator(0)],
 		help_text="Total calories per serving"
 	)
 	protein_grams = models.DecimalField(
 		max_digits=5,
 		decimal_places=2,
+		validators=[MinValueValidator(Decimal('0.00'))],
 		help_text="Protein content in grams"
 	)
 	fat_grams = models.DecimalField(
 		max_digits=5,
 		decimal_places=2,
+		validators=[MinValueValidator(Decimal('0.00'))],
 		help_text="Fat content in grams"
 	)
 	carbohydrate_grams = models.DecimalField(
 		max_digits=5,
 		decimal_places=2,
+		validators=[MinValueValidator(Decimal('0.00'))],
 		help_text="Carbohydrate content in grams"
 	)
 	

@@ -348,6 +348,115 @@ class NutritionalInformationTimestampTests(TestCase):
         self.assertGreaterEqual(nutrition.updated_at, original_updated)
 
 
+class NutritionalInformationValidationTests(TestCase):
+    """Test cases for NutritionalInformation field validators."""
+    
+    def setUp(self):
+        """Set up test fixtures before each test method."""
+        self.restaurant = Restaurant.objects.create(
+            name='Validation Test Restaurant',
+            owner_name='Validation Owner',
+            email='validation@restaurant.com',
+            phone_number='555-4444'
+        )
+        
+        self.category = MenuCategory.objects.create(
+            name='Test Category',
+            description='Test description'
+        )
+        
+        self.menu_item = MenuItem.objects.create(
+            name='Test Item',
+            price=Decimal('10.99'),
+            restaurant=self.restaurant,
+            category=self.category
+        )
+    
+    def test_negative_calories_prevented(self):
+        """Test that negative calories are prevented by validator."""
+        nutrition = NutritionalInformation(
+            menu_item=self.menu_item,
+            calories=-100,
+            protein_grams=Decimal('10.00'),
+            fat_grams=Decimal('5.00'),
+            carbohydrate_grams=Decimal('20.00')
+        )
+        
+        with self.assertRaises(ValidationError):
+            nutrition.full_clean()
+    
+    def test_negative_protein_prevented(self):
+        """Test that negative protein grams are prevented by validator."""
+        nutrition = NutritionalInformation(
+            menu_item=self.menu_item,
+            calories=100,
+            protein_grams=Decimal('-10.00'),
+            fat_grams=Decimal('5.00'),
+            carbohydrate_grams=Decimal('20.00')
+        )
+        
+        with self.assertRaises(ValidationError):
+            nutrition.full_clean()
+    
+    def test_negative_fat_prevented(self):
+        """Test that negative fat grams are prevented by validator."""
+        nutrition = NutritionalInformation(
+            menu_item=self.menu_item,
+            calories=100,
+            protein_grams=Decimal('10.00'),
+            fat_grams=Decimal('-5.00'),
+            carbohydrate_grams=Decimal('20.00')
+        )
+        
+        with self.assertRaises(ValidationError):
+            nutrition.full_clean()
+    
+    def test_negative_carbohydrate_prevented(self):
+        """Test that negative carbohydrate grams are prevented by validator."""
+        nutrition = NutritionalInformation(
+            menu_item=self.menu_item,
+            calories=100,
+            protein_grams=Decimal('10.00'),
+            fat_grams=Decimal('5.00'),
+            carbohydrate_grams=Decimal('-20.00')
+        )
+        
+        with self.assertRaises(ValidationError):
+            nutrition.full_clean()
+    
+    def test_zero_values_pass_validation(self):
+        """Test that zero values pass validation (edge case)."""
+        nutrition = NutritionalInformation(
+            menu_item=self.menu_item,
+            calories=0,
+            protein_grams=Decimal('0.00'),
+            fat_grams=Decimal('0.00'),
+            carbohydrate_grams=Decimal('0.00')
+        )
+        
+        # Should not raise ValidationError
+        nutrition.full_clean()
+        nutrition.save()
+        
+        self.assertEqual(nutrition.calories, 0)
+    
+    def test_positive_values_pass_validation(self):
+        """Test that positive values pass validation."""
+        nutrition = NutritionalInformation(
+            menu_item=self.menu_item,
+            calories=350,
+            protein_grams=Decimal('15.50'),
+            fat_grams=Decimal('20.00'),
+            carbohydrate_grams=Decimal('25.30')
+        )
+        
+        # Should not raise ValidationError
+        nutrition.full_clean()
+        nutrition.save()
+        
+        self.assertEqual(nutrition.calories, 350)
+
+
 if __name__ == '__main__':
     print("=" * 80)
     print("NUTRITIONAL INFORMATION MODEL TEST SUITE")
@@ -359,6 +468,8 @@ if __name__ == '__main__':
     print("  ✓ Cascade deletion behavior")
     print("  ✓ DecimalField precision for macronutrients")
     print("  ✓ Integer field for calories")
+    print("  ✓ MinValueValidator preventing negative values")
+    print("  ✓ Zero values edge case validation")
     print("  ✓ __str__ method representation")
     print("  ✓ CRUD operations")
     print("  ✓ Query filtering and ordering")

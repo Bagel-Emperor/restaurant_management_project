@@ -761,3 +761,77 @@ def calculate_order_price(order_items: list) -> Decimal:
     total = total.quantize(Decimal('0.01'))
     
     return total
+
+
+# ================================
+# TIP CALCULATION
+# ================================
+
+def calculate_tip_amount(order_total, tip_percentage):
+    """
+    Calculate the tip amount for a given order total and tip percentage.
+    
+    This utility function computes the gratuity amount based on the order total
+    and desired tip percentage. The result is rounded to two decimal places
+    for proper currency representation.
+    
+    Args:
+        order_total (Decimal, float, or int): The total bill amount before tip.
+                                              Can be a Decimal, float, or int.
+        tip_percentage (int or float): The tip percentage (e.g., 15 for 15%, 20 for 20%).
+                                       Can be an integer or float for fractional percentages.
+    
+    Returns:
+        Decimal: The calculated tip amount, rounded to 2 decimal places.
+    
+    Formula:
+        tip_amount = order_total * (tip_percentage / 100)
+    
+    Examples:
+        >>> from orders.utils import calculate_tip_amount
+        >>> from decimal import Decimal
+        
+        >>> # 15% tip on $50.00 order
+        >>> calculate_tip_amount(Decimal('50.00'), 15)
+        Decimal('7.50')
+        
+        >>> # 20% tip on $100.00 order
+        >>> calculate_tip_amount(100.00, 20)
+        Decimal('20.00')
+        
+        >>> # 18% tip on $75.50 order
+        >>> calculate_tip_amount(Decimal('75.50'), 18)
+        Decimal('13.59')
+        
+        >>> # Fractional percentage: 12.5% tip
+        >>> calculate_tip_amount(80, 12.5)
+        Decimal('10.00')
+        
+        >>> # No tip (0%)
+        >>> calculate_tip_amount(Decimal('25.00'), 0)
+        Decimal('0.00')
+        
+        >>> # Large order with standard tip
+        >>> calculate_tip_amount(Decimal('347.89'), 18)
+        Decimal('62.62')
+    
+    Notes:
+        - The function uses Decimal type for precise currency calculations
+        - Result is always rounded to exactly 2 decimal places
+        - Negative values are allowed (though uncommon in practice)
+        - Zero tip percentage returns 0.00
+    
+    Raises:
+        decimal.InvalidOperation: If order_total or tip_percentage cannot be converted to Decimal
+    """
+    # Convert inputs to Decimal for precise currency calculations
+    order_total = Decimal(str(order_total))
+    tip_percentage = Decimal(str(tip_percentage))
+    
+    # Calculate tip amount: total * (percentage / 100)
+    tip_amount = order_total * (tip_percentage / Decimal('100'))
+    
+    # Round to 2 decimal places for currency precision
+    tip_amount = tip_amount.quantize(Decimal('0.01'))
+    
+    return tip_amount

@@ -493,3 +493,144 @@ def calculate_discount(original_price, discount_percentage):
     # Round to 2 decimal places for currency precision
     # Uses ROUND_HALF_EVEN (banker's rounding) by default
     return discounted_price.quantize(Decimal('0.01'))
+
+
+# ================================
+# PHONE NUMBER VALIDATION
+# ================================
+
+def validate_phone_number(phone_number: str) -> bool:
+    """
+    Validate if a string matches a basic valid phone number format.
+    
+    This function uses regular expressions to check if the input string represents
+    a valid phone number. It supports common phone number formats including:
+    - 10-digit US phone numbers (e.g., 5551234567)
+    - Phone numbers with hyphens (e.g., 555-123-4567)
+    - Phone numbers with spaces (e.g., 555 123 4567)
+    - Phone numbers with parentheses (e.g., (555) 123-4567)
+    - Phone numbers with country code prefix (e.g., +1-555-123-4567, +1 555 123 4567)
+    - Phone numbers with dots (e.g., 555.123.4567)
+    - International format (e.g., +44 20 7123 4567)
+    
+    Args:
+        phone_number (str): The phone number string to validate
+        
+    Returns:
+        bool: True if the phone number matches a valid format, False otherwise
+    
+    Examples:
+        >>> from home.utils import validate_phone_number
+        
+        >>> # Valid US phone numbers (10 digits)
+        >>> validate_phone_number("5551234567")
+        True
+        
+        >>> validate_phone_number("555-123-4567")
+        True
+        
+        >>> validate_phone_number("(555) 123-4567")
+        True
+        
+        >>> validate_phone_number("555.123.4567")
+        True
+        
+        >>> validate_phone_number("555 123 4567")
+        True
+        
+        >>> # Valid with country code
+        >>> validate_phone_number("+1-555-123-4567")
+        True
+        
+        >>> validate_phone_number("+1 555 123 4567")
+        True
+        
+        >>> validate_phone_number("+15551234567")
+        True
+        
+        >>> # Valid international numbers (11-12 digits with country code)
+        >>> validate_phone_number("+44 20 7123 4567")
+        True
+        
+        >>> validate_phone_number("+33 1 42 86 82 00")
+        True
+        
+        >>> # Invalid formats
+        >>> validate_phone_number("123")  # Too short
+        False
+        
+        >>> validate_phone_number("abcd1234567")  # Contains letters
+        False
+        
+        >>> validate_phone_number("")  # Empty string
+        False
+        
+        >>> validate_phone_number("555-123-456")  # Too few digits
+        False
+        
+        >>> validate_phone_number("12345678901234")  # Too many digits
+        False
+    
+    Notes:
+        - Accepts 10-12 digits total (excluding country code prefix)
+        - Allows optional '+' prefix for country codes
+        - Allows common separators: hyphens, spaces, dots, parentheses
+        - Strips whitespace before validation
+        - Returns False for None, empty strings, or non-string inputs
+        - Does not verify if the phone number actually exists or is in service
+    
+    Validation Rules:
+        - Must contain 10-12 digits (or 11-15 with country code)
+        - Optional '+' at the start for country code
+        - Allowed separators: space, hyphen, dot, parentheses
+        - No letters or special characters (except allowed separators)
+    """
+    # Handle None or non-string inputs
+    if not phone_number or not isinstance(phone_number, str):
+        return False
+    
+    # Strip leading/trailing whitespace
+    phone_number = phone_number.strip()
+    
+    # Check for empty string after stripping
+    if not phone_number:
+        return False
+    
+    # Regular expression pattern for phone number validation
+    # This pattern matches:
+    # - Optional country code: +1, +44, etc. (1-3 digits after +)
+    # - Optional area code in parentheses: (555) or just 555
+    # - Main phone number with various separators (spaces, hyphens, dots)
+    # - Total of 10-12 digits (or 11-15 if country code is present)
+    
+    phone_pattern = re.compile(
+        r'^'                          # Start of string
+        r'(\+\d{1,3}\s?)?'           # Optional country code: +1, +44, etc.
+        r'(\(\d{3}\)|\d{3})'         # Area code: (555) or 555
+        r'[\s\.-]?'                   # Optional separator
+        r'\d{3}'                      # First 3 digits
+        r'[\s\.-]?'                   # Optional separator
+        r'\d{4}'                      # Last 4 digits
+        r'$'                          # End of string
+    )
+    
+    # Alternative pattern for international numbers with more flexibility
+    # Matches 10-15 digits with optional + prefix and separators
+    international_pattern = re.compile(
+        r'^'                          # Start of string
+        r'\+?'                        # Optional + for country code
+        r'[\d\s\.\-\(\)]{10,18}'     # 10-18 characters (digits + separators)
+        r'$'                          # End of string
+    )
+    
+    # First try the strict US phone number pattern
+    if phone_pattern.match(phone_number):
+        return True
+    
+    # Then try the international pattern
+    if international_pattern.match(phone_number):
+        # Count actual digits to ensure we have 10-15 digits
+        digit_count = sum(1 for char in phone_number if char.isdigit())
+        return 10 <= digit_count <= 15
+    
+    return False

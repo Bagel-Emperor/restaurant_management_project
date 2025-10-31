@@ -266,6 +266,48 @@ class Ingredient(models.Model):
 		return self.name
 
 
+class DailyOperatingHours(models.Model):
+	"""
+	Represents the operating hours for a specific day of the week.
+	Each instance stores the opening and closing times for one day.
+	"""
+	DAYS_OF_WEEK = [
+		(0, 'Monday'),
+		(1, 'Tuesday'),
+		(2, 'Wednesday'),
+		(3, 'Thursday'),
+		(4, 'Friday'),
+		(5, 'Saturday'),
+		(6, 'Sunday'),
+	]
+	
+	day_of_week = models.IntegerField(
+		choices=DAYS_OF_WEEK,
+		unique=True,
+		help_text="Day of the week (0=Monday, 6=Sunday)"
+	)
+	open_time = models.TimeField(help_text="Opening time for this day")
+	close_time = models.TimeField(help_text="Closing time for this day")
+	is_closed = models.BooleanField(
+		default=False,
+		help_text="Set to True if the restaurant is closed on this day"
+	)
+	
+	created_at = models.DateTimeField(auto_now_add=True)
+	updated_at = models.DateTimeField(auto_now=True)
+	
+	class Meta:
+		ordering = ['day_of_week']
+		verbose_name = 'Daily Operating Hours'
+		verbose_name_plural = 'Daily Operating Hours'
+	
+	def __str__(self):
+		day_name = self.get_day_of_week_display()
+		if self.is_closed:
+			return f"{day_name}: Closed"
+		return f"{day_name}: {self.open_time.strftime('%I:%M %p')} - {self.close_time.strftime('%I:%M %p')}"
+
+
 class NutritionalInformation(models.Model):
 	"""
 	Stores nutritional information for menu items.

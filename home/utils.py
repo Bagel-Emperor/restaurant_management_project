@@ -635,3 +635,99 @@ def validate_phone_number(phone_number: str) -> bool:
         return 10 <= digit_count <= 15
     
     return False
+
+
+# ================================
+# RESTAURANT OPERATING HOURS
+# ================================
+
+def get_today_operating_hours():
+    """
+    Get the restaurant's operating hours for the current day of the week.
+    
+    This function determines today's day of the week and queries the
+    DailyOperatingHours model to retrieve the corresponding opening
+    and closing times. Useful for displaying current hours on the
+    website or checking if the restaurant is open today.
+    
+    Returns:
+        tuple: A tuple containing (open_time, close_time) if hours are found,
+               or (None, None) if no hours exist for today or the restaurant
+               is closed on the current day.
+               
+               - open_time (datetime.time or None): Opening time for today
+               - close_time (datetime.time or None): Closing time for today
+    
+    Examples:
+        >>> from home.utils import get_today_operating_hours
+        >>> from datetime import time
+        
+        >>> # If today is Monday and hours are 9am-5pm
+        >>> open_time, close_time = get_today_operating_hours()
+        >>> print(f"Open: {open_time}, Close: {close_time}")
+        Open: 09:00:00, Close: 17:00:00
+        
+        >>> # If today is Sunday and the restaurant is closed
+        >>> open_time, close_time = get_today_operating_hours()
+        >>> print(f"Open: {open_time}, Close: {close_time}")
+        Open: None, Close: None
+        
+        >>> # Check if restaurant is open today
+        >>> open_time, close_time = get_today_operating_hours()
+        >>> if open_time and close_time:
+        ...     print(f"We're open from {open_time} to {close_time}!")
+        ... else:
+        ...     print("Sorry, we're closed today.")
+        
+        >>> # Use in a view to display hours
+        >>> open_time, close_time = get_today_operating_hours()
+        >>> if open_time:
+        ...     hours_str = f"{open_time.strftime('%I:%M %p')} - {close_time.strftime('%I:%M %p')}"
+        ...     context = {'todays_hours': hours_str}
+    
+    Notes:
+        - Uses Python's datetime.datetime.now().weekday() to determine the current day
+        - Monday is 0, Sunday is 6 (following Python's datetime convention)
+        - Returns (None, None) if no DailyOperatingHours entry exists for today
+        - Returns (None, None) if the restaurant is marked as closed (is_closed=True)
+        - The times returned are datetime.time objects, not strings
+        - This function queries the database each time it's called
+    
+    Database Requirements:
+        - Requires DailyOperatingHours model with the following fields:
+          * day_of_week (IntegerField): 0-6 representing Monday-Sunday
+          * open_time (TimeField): Opening time
+          * close_time (TimeField): Closing time
+          * is_closed (BooleanField): Whether closed on this day
+    
+    Raises:
+        No exceptions are raised. If the model doesn't exist or the query
+        fails, the function returns (None, None) and logs the error.
+    """
+    try:
+        # Get the current day of the week (0 = Monday, 6 = Sunday)
+        today = datetime.now().weekday()
+        
+        # Import the model here to avoid circular imports
+        from .models import DailyOperatingHours
+        
+        # Query the DailyOperatingHours model for today's entry
+        operating_hours = DailyOperatingHours.objects.filter(
+            day_of_week=today
+        ).first()
+        
+        # If no entry found or restaurant is closed today, return (None, None)
+        if not operating_hours or operating_hours.is_closed:
+            return (None, None)
+        
+        # Return the open and close times as a tuple
+        return (operating_hours.open_time, operating_hours.close_time)
+    
+    except ImportError as e:
+        # Model doesn't exist or can't be imported
+        logger.error(f"Failed to import DailyOperatingHours model: {e}")
+        return (None, None)
+    except Exception as e:
+        # Database errors, query failures, or other unexpected issues
+        logger.error(f"Error retrieving today's operating hours: {e}", exc_info=True)
+        return (None, None)

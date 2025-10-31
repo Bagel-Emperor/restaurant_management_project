@@ -702,7 +702,7 @@ def get_today_operating_hours():
     
     Raises:
         No exceptions are raised. If the model doesn't exist or the query
-        fails, the function returns (None, None).
+        fails, the function returns (None, None) and logs the error.
     """
     try:
         # Get the current day of the week (0 = Monday, 6 = Sunday)
@@ -723,7 +723,11 @@ def get_today_operating_hours():
         # Return the open and close times as a tuple
         return (operating_hours.open_time, operating_hours.close_time)
     
-    except Exception:
-        # If any error occurs (model doesn't exist, database error, etc.)
-        # return (None, None) to indicate no hours available
+    except ImportError as e:
+        # Model doesn't exist or can't be imported
+        logger.error(f"Failed to import DailyOperatingHours model: {e}")
+        return (None, None)
+    except Exception as e:
+        # Database errors, query failures, or other unexpected issues
+        logger.error(f"Error retrieving today's operating hours: {e}", exc_info=True)
         return (None, None)

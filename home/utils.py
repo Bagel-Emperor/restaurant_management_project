@@ -572,7 +572,7 @@ def validate_phone_number(phone_number: str) -> bool:
         False
     
     Notes:
-        - Accepts 10-12 digits total (excluding country code prefix)
+        - Accepts 10-15 digits total
         - Allows optional '+' prefix for country codes
         - Allows common separators: hyphens, spaces, dots, parentheses
         - Strips whitespace before validation
@@ -580,7 +580,7 @@ def validate_phone_number(phone_number: str) -> bool:
         - Does not verify if the phone number actually exists or is in service
     
     Validation Rules:
-        - Must contain 10-12 digits (or 11-15 with country code)
+        - Must contain 10-15 digits
         - Optional '+' at the start for country code
         - Allowed separators: space, hyphen, dot, parentheses
         - No letters or special characters (except allowed separators)
@@ -597,11 +597,11 @@ def validate_phone_number(phone_number: str) -> bool:
         return False
     
     # Regular expression pattern for phone number validation
-    # This pattern matches:
+    # This pattern matches strict US phone number format (3-3-4 digit pattern):
     # - Optional country code: +1, +44, etc. (1-3 digits after +)
     # - Optional area code in parentheses: (555) or just 555
     # - Main phone number with various separators (spaces, hyphens, dots)
-    # - Total of 10-12 digits (or 11-15 if country code is present)
+    # - Exactly 10 digits in 3-3-4 format (or 11-13 with country code)
     
     phone_pattern = re.compile(
         r'^'                          # Start of string
@@ -615,7 +615,8 @@ def validate_phone_number(phone_number: str) -> bool:
     )
     
     # Alternative pattern for international numbers with more flexibility
-    # Matches 10-15 digits with optional + prefix and separators
+    # Matches 10-18 characters (including digits and separators like spaces, hyphens, dots)
+    # Actual digit count (10-15 digits) is validated separately below
     international_pattern = re.compile(
         r'^'                          # Start of string
         r'\+?'                        # Optional + for country code

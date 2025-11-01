@@ -71,6 +71,7 @@ class RestaurantInfoSerializer(serializers.ModelSerializer):
             'email',
             'phone_number',
             'opening_hours',
+            'has_delivery',
             'address',
             'city',
             'state',

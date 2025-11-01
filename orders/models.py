@@ -146,6 +146,9 @@ class LoyaltyProgram(models.Model):
     
     Each tier has specific benefits including point requirements and discount
     percentages. Examples include Bronze, Silver, Gold, or Platinum tiers.
+    
+    The loyalty discount is applied after any coupon discounts, providing an
+    additional benefit for loyal customers on top of promotional offers.
     """
     name = models.CharField(
         max_length=50,
@@ -154,12 +157,14 @@ class LoyaltyProgram(models.Model):
     )
     points_required = models.IntegerField(
         unique=True,
-        help_text="Minimum number of loyalty points required to reach this tier"
+        validators=[MinValueValidator(0)],
+        help_text="Minimum number of loyalty points required to reach this tier (must be 0 or greater)"
     )
     discount_percentage = models.DecimalField(
         max_digits=5,
         decimal_places=2,
-        help_text="Percentage discount for customers in this tier (e.g., 5.00 for 5%)"
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Percentage discount for customers in this tier (0-100%, e.g., 5.00 for 5%)"
     )
     description = models.TextField(
         help_text="Brief explanation of the benefits for this tier"

@@ -187,16 +187,19 @@ class LoyaltyProgramModelTest(TestCase):
         self.assertIsNotNone(self.bronze_tier.id)
     
     def test_negative_points_required(self):
-        """Test that negative points_required are technically allowed (edge case)."""
-        # Django IntegerField allows negative numbers by default
-        tier = LoyaltyProgram.objects.create(
+        """Test that negative points_required are rejected by validator."""
+        tier = LoyaltyProgram(
             name='Negative Points Tier',
             points_required=-100,
             discount_percentage=Decimal('1.00'),
             description='Testing negative points'
         )
         
-        self.assertEqual(tier.points_required, -100)
+        with self.assertRaises(ValidationError) as context:
+            tier.full_clean()
+        
+        # Check that the error is on the points_required field
+        self.assertIn('points_required', context.exception.message_dict)
     
     def test_zero_discount_percentage(self):
         """Test that discount_percentage can be zero."""
@@ -210,16 +213,45 @@ class LoyaltyProgramModelTest(TestCase):
         self.assertEqual(tier.discount_percentage, Decimal('0.00'))
     
     def test_large_discount_percentage(self):
-        """Test that discount_percentage can store large values."""
-        # max_digits=5, decimal_places=2 means up to 999.99
-        tier = LoyaltyProgram.objects.create(
+        """Test that discount_percentage above 100% is rejected by validator."""
+        tier = LoyaltyProgram(
             name='Huge Discount Tier',
             points_required=5000,
             discount_percentage=Decimal('999.99'),
             description='Tier with maximum discount'
         )
         
-        self.assertEqual(tier.discount_percentage, Decimal('999.99'))
+        with self.assertRaises(ValidationError) as context:
+            tier.full_clean()
+        
+        # Check that the error is on the discount_percentage field
+        self.assertIn('discount_percentage', context.exception.message_dict)
+    
+    def test_discount_percentage_at_max_boundary(self):
+        """Test that discount_percentage of exactly 100% is allowed."""
+        tier = LoyaltyProgram.objects.create(
+            name='Max Discount Tier',
+            points_required=10000,
+            discount_percentage=Decimal('100.00'),
+            description='Tier with 100% discount (free items)'
+        )
+        
+        self.assertEqual(tier.discount_percentage, Decimal('100.00'))
+        tier.full_clean()  # Should not raise ValidationError
+    
+    def test_discount_percentage_above_100_boundary(self):
+        """Test that discount_percentage just above 100% is rejected."""
+        tier = LoyaltyProgram(
+            name='Over 100 Discount Tier',
+            points_required=15000,
+            discount_percentage=Decimal('100.01'),
+            description='Testing boundary'
+        )
+        
+        with self.assertRaises(ValidationError) as context:
+            tier.full_clean()
+        
+        self.assertIn('discount_percentage', context.exception.message_dict)
     
     def test_verbose_name(self):
         """Test the verbose_name is set correctly."""

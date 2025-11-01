@@ -839,6 +839,7 @@ class DailySpecial(models.Model):
 		help_text="Date when this item is featured as a daily special"
 	)
 	description = models.TextField(
+		default='',
 		blank=True,
 		help_text="Optional promotional description for this daily special"
 	)

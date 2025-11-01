@@ -161,8 +161,8 @@ class RestaurantInfoAPITest(APITestCase):
             self.assertIn(field, restaurant_data, 
                          f"Required field '{field}' missing from response")
     
-    def test_get_restaurant_info_only_get_method_allowed(self):
-        """Test that the endpoint is decorated with @api_view(['GET'])."""
+    def test_get_restaurant_info_method_not_allowed(self):
+        """Test that only GET method is allowed."""
         # Create a restaurant
         Restaurant.objects.create(
             name='Test Restaurant',
@@ -171,12 +171,18 @@ class RestaurantInfoAPITest(APITestCase):
             phone_number='555-0100'
         )
         
-        # GET request should work
-        response = self.client.get('/PerpexBistro/api/restaurant-info/')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
-        # POST request should not be allowed (returns 405 or 401 depending on auth)
+        # Try POST request (should not be allowed)
         response = self.client.post('/PerpexBistro/api/restaurant-info/', {})
+        self.assertIn(response.status_code, 
+                     [status.HTTP_405_METHOD_NOT_ALLOWED, status.HTTP_401_UNAUTHORIZED])
+        
+        # Try PUT request (should not be allowed)
+        response = self.client.put('/PerpexBistro/api/restaurant-info/', {})
+        self.assertIn(response.status_code, 
+                     [status.HTTP_405_METHOD_NOT_ALLOWED, status.HTTP_401_UNAUTHORIZED])
+        
+        # Try DELETE request (should not be allowed)
+        response = self.client.delete('/PerpexBistro/api/restaurant-info/')
         self.assertIn(response.status_code, 
                      [status.HTTP_405_METHOD_NOT_ALLOWED, status.HTTP_401_UNAUTHORIZED])
 

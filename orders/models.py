@@ -140,6 +140,42 @@ class Customer(models.Model):
         return self.name or self.phone or f"Customer {self.id}"
 
 
+class LoyaltyProgram(models.Model):
+    """
+    Represents different tiers or levels of a customer loyalty program.
+    
+    Each tier has specific benefits including point requirements and discount
+    percentages. Examples include Bronze, Silver, Gold, or Platinum tiers.
+    """
+    name = models.CharField(
+        max_length=50,
+        unique=True,
+        help_text="Name of the loyalty tier (e.g., 'Silver Member')"
+    )
+    points_required = models.IntegerField(
+        unique=True,
+        help_text="Minimum number of loyalty points required to reach this tier"
+    )
+    discount_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        help_text="Percentage discount for customers in this tier (e.g., 5.00 for 5%)"
+    )
+    description = models.TextField(
+        help_text="Brief explanation of the benefits for this tier"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Loyalty Program"
+        verbose_name_plural = "Loyalty Programs"
+        ordering = ['points_required']  # Order by points required (lowest to highest)
+
+    def __str__(self):
+        return f"{self.name} ({self.points_required} points - {self.discount_percentage}% discount)"
+
+
 # Order model for listing and tracking orders
 class Order(models.Model):
     user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='orders')

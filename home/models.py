@@ -766,3 +766,105 @@ class Reservation(models.Model):
 			current_slot_start += slot_interval
 		
 		return available_slots
+
+
+class DailySpecialManager(models.Manager):
+	"""
+	Custom manager for DailySpecial model with specialized query methods.
+	
+	Provides efficient filtering for upcoming and current daily specials
+	to avoid displaying past specials to customers.
+	"""
+	
+	def upcoming(self):
+		"""
+		Filter DailySpecial objects to return only today's and future specials.
+		
+		This method returns specials where the special_date is today or in the future,
+		excluding any past specials that are no longer relevant. This is useful for
+		displaying current and upcoming promotional items without manual filtering.
+		
+		Returns:
+			QuerySet: DailySpecial objects with special_date >= today, ordered by date
+			
+		Example:
+			>>> # Get all upcoming specials
+			>>> specials = DailySpecial.objects.upcoming()
+			>>> for special in specials:
+			...     print(f"{special.menu_item.name} on {special.special_date}")
+			
+			>>> # Get count of upcoming specials
+			>>> count = DailySpecial.objects.upcoming().count()
+			
+			>>> # Get only available upcoming specials
+			>>> available = DailySpecial.objects.upcoming().filter(
+			...     menu_item__is_available=True
+			... )
+		
+		Notes:
+			- Uses datetime.date.today() to get current date
+			- Results are ordered by special_date (earliest first)
+			- Does not filter by menu item availability - chain additional filters if needed
+			- Efficient single-query implementation using filter and order_by
+		"""
+		from datetime import date
+		today = date.today()
+		return self.filter(special_date__gte=today).order_by('special_date')
+
+
+class DailySpecial(models.Model):
+	"""
+	Model to track daily special menu items with specific dates.
+	
+	This model allows restaurants to schedule promotional items for specific dates,
+	providing more control than the simple boolean is_daily_special field on MenuItem.
+	Each special links a menu item to a specific date and includes optional
+	promotional description text.
+	
+	Attributes:
+		menu_item: The MenuItem that is being featured as a special
+		special_date: The date when this item is featured as a daily special
+		description: Optional promotional text for this specific special
+		created_at: Timestamp when this special was scheduled
+		updated_at: Timestamp when this special was last modified
+	"""
+	
+	menu_item = models.ForeignKey(
+		MenuItem,
+		on_delete=models.CASCADE,
+		related_name='daily_specials',
+		help_text="Menu item featured as a daily special"
+	)
+	special_date = models.DateField(
+		help_text="Date when this item is featured as a daily special"
+	)
+	description = models.TextField(
+		default='',
+		blank=True,
+		help_text="Optional promotional description for this daily special"
+	)
+	created_at = models.DateTimeField(auto_now_add=True)
+	updated_at = models.DateTimeField(auto_now=True)
+	
+	# Attach custom manager
+	objects = DailySpecialManager()
+	
+	class Meta:
+		ordering = ['special_date']
+		verbose_name = 'Daily Special'
+		verbose_name_plural = 'Daily Specials'
+		# Ensure a menu item can only be a special once per date
+		unique_together = ['menu_item', 'special_date']
+	
+	def __str__(self):
+		return f"{self.menu_item.name} on {self.special_date}"
+	
+	def is_upcoming(self):
+		"""
+		Check if this special is for today or a future date.
+		
+		Returns:
+			bool: True if special_date is today or in the future, False otherwise
+		"""
+		from datetime import date
+		return self.special_date >= date.today()

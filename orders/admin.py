@@ -24,11 +24,9 @@ def mark_orders_processed(modeladmin, request, queryset):
         name=OrderStatusChoices.PROCESSING
     )
     
-    # Count how many orders were actually updated
-    updated_count = queryset.exclude(status=processing_status).count()
-    
-    # Update the selected orders to Processing status
-    queryset.update(status=processing_status)
+    # Update only orders that aren't already in Processing status
+    # The update() method returns the number of rows affected
+    updated_count = queryset.exclude(status=processing_status).update(status=processing_status)
     
     # Provide feedback to the admin user
     if updated_count == 0:

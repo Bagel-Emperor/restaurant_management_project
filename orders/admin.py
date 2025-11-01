@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib import messages
-from .models import Customer, Order, OrderStatus
+from .models import Customer, Order, OrderStatus, LoyaltyProgram
 from .choices import OrderStatusChoices
 
 
@@ -107,6 +107,60 @@ class OrderAdmin(admin.ModelAdmin):
     
     # Number of items per page
     list_per_page = 25
+
+
+@admin.register(LoyaltyProgram)
+class LoyaltyProgramAdmin(admin.ModelAdmin):
+    """
+    Django admin configuration for the LoyaltyProgram model.
+    
+    Provides an organized admin interface for managing customer loyalty
+    program tiers with filtering, searching, and display options.
+    """
+    
+    # Display these fields in the list view
+    list_display = [
+        'name',
+        'points_required',
+        'discount_percentage',
+        'created_at',
+        'updated_at'
+    ]
+    
+    # Add filters for easy data segmentation
+    list_filter = [
+        'created_at',
+        'updated_at'
+    ]
+    
+    # Enable search functionality
+    search_fields = [
+        'name',
+        'description'
+    ]
+    
+    # Set default ordering (by points required)
+    ordering = ['points_required']
+    
+    # Make certain fields read-only
+    readonly_fields = [
+        'created_at',
+        'updated_at'
+    ]
+    
+    # Fieldsets for organized form display
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'description')
+        }),
+        ('Requirements & Benefits', {
+            'fields': ('points_required', 'discount_percentage')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
 
 
 # Register Customer with basic admin

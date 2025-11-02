@@ -25,6 +25,7 @@ from .views import (
     get_nearby_drivers,  # Task 14B: Nearby drivers for ride matching
     admin_ride_history,  # Task 15B: Admin ride history with filtering
     trip_receipt_view,  # Task 16B: Trip receipt view for completed rides
+    PaymentMethodListView,  # Payment methods endpoint
     # Task 10B & 11B: Fare calculation and payment views
     calculate_fare,
     mark_ride_as_paid,
@@ -53,6 +54,9 @@ urlpatterns = [
     path('orders/status/<str:order_id>/', OrderStatusRetrieveView.as_view(), name='order-status-retrieve'),
     path('orders/update-status/', UpdateOrderStatusView.as_view(), name='order-update-status'),
     path('customers/', CustomerListCreateAPIView.as_view(), name='customer-list-create'),
+    
+    # Payment methods endpoint
+    path('payment-methods/', PaymentMethodListView.as_view(), name='payment-method-list'),
     
     # Coupon validation endpoint
     path('coupons/validate/', CouponValidationView.as_view(), name='coupon-validate'),

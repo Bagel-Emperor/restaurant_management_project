@@ -124,13 +124,16 @@ class LoyaltyProgramAdmin(admin.ModelAdmin):
     list_display = [
         'name',
         'points_required',
+        'points_per_dollar_spent',
         'discount_percentage',
+        'is_active',
         'created_at',
         'updated_at'
     ]
     
     # Add filters for easy data segmentation
     list_filter = [
+        'is_active',
         'created_at',
         'updated_at'
     ]
@@ -153,10 +156,11 @@ class LoyaltyProgramAdmin(admin.ModelAdmin):
     # Fieldsets for organized form display
     fieldsets = (
         ('Basic Information', {
-            'fields': ('name', 'description')
+            'fields': ('name', 'description', 'is_active')
         }),
         ('Requirements & Benefits', {
-            'fields': ('points_required', 'discount_percentage')
+            'fields': ('points_required', 'points_per_dollar_spent', 'discount_percentage'),
+            'description': 'Points required defines tier threshold, points per dollar defines earning rate, discount percentage defines tier benefit'
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),

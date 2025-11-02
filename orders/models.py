@@ -160,6 +160,13 @@ class LoyaltyProgram(models.Model):
         validators=[MinValueValidator(0)],
         help_text="Minimum number of loyalty points required to reach this tier (must be 0 or greater)"
     )
+    points_per_dollar_spent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        default=1.0,
+        help_text="How many loyalty points a customer earns for each dollar spent (e.g., 1.0 for 1 point per dollar)"
+    )
     discount_percentage = models.DecimalField(
         max_digits=5,
         decimal_places=2,
@@ -168,6 +175,10 @@ class LoyaltyProgram(models.Model):
     )
     description = models.TextField(
         help_text="Brief explanation of the benefits for this tier"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Flag to indicate if the program is currently active"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

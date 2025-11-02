@@ -1348,3 +1348,50 @@ class Ride(models.Model):
         return (f"<Ride id={self.pk} rider={self.rider.user.username} "
                 f"driver={self.driver.user.username if self.driver else 'None'} "
                 f"status={self.status}>")
+
+
+class PaymentMethod(models.Model):
+    """
+    Model representing different payment methods available for orders.
+    
+    This model defines the various ways customers can pay for their orders,
+    such as Credit Card, Cash, Online Wallet, etc. Each payment method can
+    be activated or deactivated as needed.
+    
+    Attributes:
+        name (str): Unique name of the payment method (max 50 characters)
+        description (str): Optional explanation of the payment method
+        is_active (bool): Whether this payment method is currently available
+    
+    Example:
+        >>> credit_card = PaymentMethod.objects.create(
+        ...     name='Credit Card',
+        ...     description='Pay securely with Visa, Mastercard, or Amex',
+        ...     is_active=True
+        ... )
+        >>> print(credit_card)
+        Credit Card
+    """
+    
+    name = models.CharField(
+        max_length=50,
+        unique=True,
+        help_text="Name of the payment method (e.g., 'Credit Card', 'Cash', 'Online Wallet')"
+    )
+    description = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Brief explanation of the payment method"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Indicates if this payment method is currently available for use"
+    )
+    
+    class Meta:
+        verbose_name = "Payment Method"
+        verbose_name_plural = "Payment Methods"
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name

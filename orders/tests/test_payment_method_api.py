@@ -177,7 +177,7 @@ class PaymentMethodSerializerTests(TestCase):
     
     def test_description_null_serialized_correctly(self):
         """Test that null description is serialized as null, not empty string."""
-        payment_method = PaymentMethod.objects.create(
+        PaymentMethod.objects.create(
             name='Gift Card',
             description=None,
             is_active=True
@@ -194,7 +194,7 @@ class PaymentMethodSerializerTests(TestCase):
     
     def test_description_empty_string_serialized_correctly(self):
         """Test that empty string description is preserved."""
-        payment_method = PaymentMethod.objects.create(
+        PaymentMethod.objects.create(
             name='Bank Transfer',
             description='',
             is_active=True
@@ -211,7 +211,7 @@ class PaymentMethodSerializerTests(TestCase):
     
     def test_special_characters_in_name_serialized(self):
         """Test that special characters in name are properly serialized."""
-        payment_method = PaymentMethod.objects.create(
+        PaymentMethod.objects.create(
             name='Credit/Debit Card',
             description='Cards with special chars!',
             is_active=True
@@ -228,7 +228,7 @@ class PaymentMethodSerializerTests(TestCase):
     
     def test_unicode_characters_serialized(self):
         """Test that Unicode characters are properly serialized."""
-        payment_method = PaymentMethod.objects.create(
+        PaymentMethod.objects.create(
             name='支付宝 (Alipay)',
             description='中文描述',
             is_active=True

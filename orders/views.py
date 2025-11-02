@@ -2337,39 +2337,49 @@ class PaymentMethodListView(generics.ListAPIView):
 		None
 	
 	**Response Format:**
-		[
-			{
-				"id": 1,
-				"name": "Credit Card",
-				"description": "Pay securely with Visa, Mastercard, or Amex",
-				"is_active": true
-			},
-			{
-				"id": 2,
-				"name": "Cash",
-				"description": "Pay with physical currency upon delivery",
-				"is_active": true
-			}
-		]
+		{
+			"count": 2,
+			"next": null,
+			"previous": null,
+			"results": [
+				{
+					"id": 1,
+					"name": "Credit Card",
+					"description": "Pay securely with Visa, Mastercard, or Amex",
+					"is_active": true
+				},
+				{
+					"id": 2,
+					"name": "Cash",
+					"description": "Pay with physical currency upon delivery",
+					"is_active": true
+				}
+			]
+		}
 	
 	**Example Request:**
 		GET /api/payment-methods/
 	
 	**Example Response (200 OK):**
-		[
-			{
-				"id": 1,
-				"name": "Credit Card",
-				"description": "Pay securely with Visa, Mastercard, or Amex",
-				"is_active": true
-			},
-			{
-				"id": 2,
-				"name": "Cash",
-				"description": null,
-				"is_active": true
-			}
-		]
+		{
+			"count": 2,
+			"next": null,
+			"previous": null,
+			"results": [
+				{
+					"id": 1,
+					"name": "Credit Card",
+					"description": "Pay securely with Visa, Mastercard, or Amex",
+					"is_active": true
+				},
+				{
+					"id": 2,
+					"name": "Cash",
+					"description": null,
+					"is_active": true
+				}
+			]
+		}
 	
 	**Use Cases:**
 		- Display available payment options in checkout form

@@ -398,8 +398,8 @@ class Order(models.Model):
         for order_item in self.order_items.select_related('menu_item'):
             unique_names.add(order_item.menu_item.name)
         
-        # Convert set to sorted list for consistent ordering
-        return sorted(list(unique_names))
+        # sorted() returns a list directly, no need for list() conversion
+        return sorted(unique_names)
     
     def __str__(self):
         order_display = self.order_id if self.order_id else f"#{self.id}"

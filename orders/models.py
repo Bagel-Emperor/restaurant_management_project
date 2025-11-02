@@ -351,6 +351,56 @@ class Order(models.Model):
         
         return final_total
     
+    def get_unique_item_names(self):
+        """
+        Get a list of unique menu item names associated with this order.
+        
+        This method retrieves all OrderItem instances related to this order,
+        extracts the name of each associated MenuItem, and returns a list
+        containing only unique names. This is useful for:
+        - Displaying order contents in summaries
+        - Search functionality (finding orders by item name)
+        - Order filtering and categorization
+        - Generating order descriptions
+        
+        Returns:
+            list: A list of unique menu item names (strings) in alphabetical order.
+                  Returns an empty list if no items are associated with the order.
+        
+        Example:
+            >>> order = Order.objects.get(order_id='ORD-ABC123')
+            >>> items = order.get_unique_item_names()
+            >>> print(items)
+            ['Caesar Salad', 'Margherita Pizza', 'Tiramisu']
+            
+            >>> # Order with duplicate items (multiple quantities)
+            >>> order2 = Order.objects.get(order_id='ORD-XYZ789')
+            >>> # Has: 2x Pizza, 1x Salad, 3x Pizza (different order items)
+            >>> items2 = order2.get_unique_item_names()
+            >>> print(items2)
+            ['Pizza', 'Salad']  # Only unique names, duplicates removed
+        
+        Notes:
+            - Uses select_related('menu_item') to optimize database queries
+            - Returns names in alphabetical order for consistency
+            - Handles edge case of orders with no items (returns empty list)
+            - Preserves original item name casing
+        
+        Performance:
+            - Single database query with join (efficient)
+            - O(n) time complexity where n is number of order items
+            - Suitable for orders with hundreds of items
+        """
+        # Use a set to collect unique names (automatically removes duplicates)
+        unique_names = set()
+        
+        # Iterate through related order items with optimized query
+        for order_item in self.order_items.select_related('menu_item'):
+            unique_names.add(order_item.menu_item.name)
+        
+        # sorted() returns a list directly, no need for list() conversion
+        return sorted(unique_names)
+    
     def __str__(self):
         order_display = self.order_id if self.order_id else f"#{self.id}"
         return f"Order {order_display} - {self.status.name if self.status else 'No Status'}"

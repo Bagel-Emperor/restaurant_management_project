@@ -84,12 +84,14 @@ class OrderAdmin(admin.ModelAdmin):
     ]
     
     # Enable search functionality
+    # Includes searching by menu item names through related OrderItem instances
     search_fields = [
         'order_id',
         'customer__name',
         'customer__email',
         'user__username',
-        'user__email'
+        'user__email',
+        'order_items__menu_item__name'  # Search by menu item names in order
     ]
     
     # Set default ordering (most recent first)

@@ -10,7 +10,7 @@ from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from decimal import Decimal
-from .models import Order, Customer, UserProfile, OrderStatus, Rider, Driver, Ride
+from .models import Order, Customer, UserProfile, OrderStatus, Rider, Driver, Ride, PaymentMethod
 from .serializers import (
     OrderSerializer, CustomerSerializer, OrderHistorySerializer, 
     UserProfileSerializer, OrderDetailSerializer, RideSerializer, 
@@ -18,7 +18,8 @@ from .serializers import (
     FareCalculationSerializer, RidePaymentSerializer,
     DriverEarningsSerializer, DriverAvailabilitySerializer,
     OrderStatusRetrievalSerializer, LocationInputSerializer, NearbyDriverSerializer,
-    RideHistoryFilterSerializer, AdminRideHistorySerializer, TripReceiptSerializer
+    RideHistoryFilterSerializer, AdminRideHistorySerializer, TripReceiptSerializer,
+    PaymentMethodSerializer
 )
 from .choices import OrderStatusChoices
 import logging
@@ -2318,5 +2319,78 @@ def trip_receipt_view(request, ride_id):
 	# Serialize and return receipt
 	serializer = TripReceiptSerializer(ride)
 	return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class PaymentMethodListView(generics.ListAPIView):
+	"""
+	API endpoint that returns a list of all active payment methods.
+	
+	This view provides a read-only list of payment methods that are
+	currently available for customers to use when placing orders.
+	Only payment methods with is_active=True are returned.
+	
+	**Permissions:**
+		- No authentication required (public endpoint)
+		- Read-only access
+	
+	**Query Parameters:**
+		None
+	
+	**Response Format:**
+		[
+			{
+				"id": 1,
+				"name": "Credit Card",
+				"description": "Pay securely with Visa, Mastercard, or Amex",
+				"is_active": true
+			},
+			{
+				"id": 2,
+				"name": "Cash",
+				"description": "Pay with physical currency upon delivery",
+				"is_active": true
+			}
+		]
+	
+	**Example Request:**
+		GET /api/payment-methods/
+	
+	**Example Response (200 OK):**
+		[
+			{
+				"id": 1,
+				"name": "Credit Card",
+				"description": "Pay securely with Visa, Mastercard, or Amex",
+				"is_active": true
+			},
+			{
+				"id": 2,
+				"name": "Cash",
+				"description": null,
+				"is_active": true
+			}
+		]
+	
+	**Use Cases:**
+		- Display available payment options in checkout form
+		- Filter payment methods for frontend dropdowns
+		- Show payment method descriptions to users
+	"""
+	
+	serializer_class = PaymentMethodSerializer
+	permission_classes = []  # Public endpoint, no authentication required
+	
+	def get_queryset(self):
+		"""
+		Return only active payment methods.
+		
+		Filters the PaymentMethod queryset to return only methods
+		where is_active=True, ensuring customers only see currently
+		available payment options.
+		
+		Returns:
+			QuerySet: Active PaymentMethod instances ordered by name
+		"""
+		return PaymentMethod.objects.filter(is_active=True).order_by('name')
 
 

@@ -3,7 +3,7 @@ from django.contrib.auth.models import User, BaseUserManager
 from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Count
-from .models import Customer, Order, OrderItem, OrderStatus, UserProfile, Rider, Driver, Ride
+from .models import Customer, Order, OrderItem, OrderStatus, UserProfile, Rider, Driver, Ride, PaymentMethod
 from home.models import MenuItem
 from decimal import Decimal
 
@@ -2041,4 +2041,31 @@ class TripReceiptSerializer(serializers.ModelSerializer):
         full_name = user.get_full_name()
         return full_name if full_name else user.username
 
+
+class PaymentMethodSerializer(serializers.ModelSerializer):
+    """
+    Serializer for PaymentMethod model.
+    
+    Serializes all payment method fields for API responses, allowing
+    frontend applications to display available payment options to users.
+    
+    Fields:
+        id: Primary key of the payment method
+        name: Name of the payment method (e.g., 'Credit Card')
+        description: Optional explanation of the payment method
+        is_active: Whether this payment method is currently available
+    
+    Example JSON output:
+        {
+            "id": 1,
+            "name": "Credit Card",
+            "description": "Pay securely with Visa, Mastercard, or Amex",
+            "is_active": true
+        }
+    """
+    
+    class Meta:
+        model = PaymentMethod
+        fields = ['id', 'name', 'description', 'is_active']
+        read_only_fields = ['id']
 

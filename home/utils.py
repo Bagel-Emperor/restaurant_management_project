@@ -731,3 +731,30 @@ def get_today_operating_hours():
         # Database errors, query failures, or other unexpected issues
         logger.error(f"Error retrieving today's operating hours: {e}", exc_info=True)
         return (None, None)
+
+
+def get_distinct_cuisines():
+    """
+    Get a list of unique cuisine/category names from menu items.
+    
+    Note: This project uses MenuCategory, not a Cuisine model.
+    Returns distinct category names from all menu items.
+    
+    Returns:
+        list: List of unique category name strings
+        
+    Example:
+        >>> get_distinct_cuisines()
+        ['Appetizers', 'Main Course', 'Desserts', 'Beverages']
+    """
+    from .models import MenuItem
+    
+    cuisines = list(
+        MenuItem.objects
+        .exclude(category__isnull=True)
+        .values_list('category__name', flat=True)
+        .distinct()
+        .order_by('category__name')
+    )
+    
+    return cuisines

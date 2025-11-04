@@ -8,7 +8,7 @@ including unique ID generation, coupon code generation, sales calculations, and 
 import logging
 import secrets
 import string
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
@@ -841,11 +841,11 @@ def calculate_tip_amount(order_total, tip_percentage):
 # DATE/TIME FORMATTING
 # ================================
 
-def format_datetime(dt: Optional[object], default: str = "") -> str:
+def format_datetime(dt: Optional[datetime], default: str = "") -> str:
     """
     Format a datetime object into a user-friendly string representation.
     
-    Converts datetime objects to a readable format like 'January 1, 2023 at 10:30 AM'.
+    Converts datetime objects to a readable format like 'January 01, 2023 at 10:30 AM'.
     Gracefully handles None values by returning a default message.
     
     Args:
@@ -859,7 +859,7 @@ def format_datetime(dt: Optional[object], default: str = "") -> str:
         >>> from datetime import datetime
         >>> dt = datetime(2023, 1, 1, 10, 30)
         >>> format_datetime(dt)
-        'January 1, 2023 at 10:30 AM'
+        'January 01, 2023 at 10:30 AM'
         
         >>> format_datetime(None)
         ''

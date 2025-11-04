@@ -835,3 +835,39 @@ def calculate_tip_amount(order_total, tip_percentage):
     tip_amount = tip_amount.quantize(Decimal('0.01'))
     
     return tip_amount
+
+
+# ================================
+# DATE/TIME FORMATTING
+# ================================
+
+def format_datetime(dt: Optional[object], default: str = "") -> str:
+    """
+    Format a datetime object into a user-friendly string representation.
+    
+    Converts datetime objects to a readable format like 'January 1, 2023 at 10:30 AM'.
+    Gracefully handles None values by returning a default message.
+    
+    Args:
+        dt: A datetime object to format, or None
+        default: String to return if dt is None (default: empty string)
+    
+    Returns:
+        str: Formatted datetime string, or default value if dt is None
+        
+    Examples:
+        >>> from datetime import datetime
+        >>> dt = datetime(2023, 1, 1, 10, 30)
+        >>> format_datetime(dt)
+        'January 1, 2023 at 10:30 AM'
+        
+        >>> format_datetime(None)
+        ''
+        
+        >>> format_datetime(None, default='N/A')
+        'N/A'
+    """
+    if dt is None:
+        return default
+    
+    return dt.strftime('%B %d, %Y at %I:%M %p')

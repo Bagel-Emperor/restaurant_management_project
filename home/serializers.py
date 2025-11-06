@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
-from .models import Restaurant, RestaurantLocation, MenuItem, MenuCategory, ContactSubmission, Table, UserReview, Ingredient
+from .models import Restaurant, RestaurantLocation, MenuItem, MenuCategory, ContactSubmission, Table, UserReview, Ingredient, DailyOperatingHours
 
 # Serializer for MenuCategory
 class MenuCategorySerializer(serializers.ModelSerializer):
@@ -47,13 +47,62 @@ class RestaurantSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at']
 
 
+class DailyOperatingHoursSerializer(serializers.ModelSerializer):
+    """
+    Serializer for DailyOperatingHours model.
+    
+    Provides structured operating hours for each day of the week, including:
+    - Day name (e.g., "Monday")
+    - Opening time (formatted as "09:00 AM")
+    - Closing time (formatted as "10:00 PM")
+    - Closed status (boolean)
+    
+    Example output:
+    {
+        "id": 1,
+        "day_of_week": 0,
+        "day_name": "Monday",
+        "open_time": "09:00 AM",
+        "close_time": "10:00 PM",
+        "is_closed": false
+    }
+    """
+    day_name = serializers.CharField(source='get_day_of_week_display', read_only=True)
+    open_time = serializers.SerializerMethodField()
+    close_time = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = DailyOperatingHours
+        fields = ['id', 'day_of_week', 'day_name', 'open_time', 'close_time', 'is_closed']
+        read_only_fields = ['id', 'day_name']
+    
+    def get_open_time(self, obj):
+        """Format open_time as '09:00 AM' if not closed."""
+        if obj.is_closed:
+            return None
+        return obj.open_time.strftime('%I:%M %p')
+    
+    def get_close_time(self, obj):
+        """Format close_time as '10:00 PM' if not closed."""
+        if obj.is_closed:
+            return None
+        return obj.close_time.strftime('%I:%M %p')
+
+
 class RestaurantInfoSerializer(serializers.ModelSerializer):
     """
     Comprehensive serializer for restaurant information.
     
-    Includes all relevant details about the restaurant including location data
-    and opening hours. Designed for the restaurant-info endpoint that provides
-    complete information about the restaurant.
+    Includes all relevant details about the restaurant including location data,
+    opening hours (JSON field), and daily operating hours (nested structured data).
+    Designed for the restaurant-info endpoint that provides complete information
+    about the restaurant.
+    
+    Features:
+    - Basic restaurant details (name, contact info)
+    - Location information (address, city, state, zip)
+    - Opening hours as JSON object
+    - Daily operating hours as nested array (Monday-Sunday with times)
     """
     # Include location fields from RestaurantLocation model
     address = serializers.SerializerMethodField()
@@ -61,6 +110,9 @@ class RestaurantInfoSerializer(serializers.ModelSerializer):
     state = serializers.SerializerMethodField()
     zip_code = serializers.SerializerMethodField()
     full_address = serializers.SerializerMethodField()
+    
+    # Include nested daily operating hours
+    daily_operating_hours = serializers.SerializerMethodField()
     
     class Meta:
         model = Restaurant
@@ -77,6 +129,7 @@ class RestaurantInfoSerializer(serializers.ModelSerializer):
             'state',
             'zip_code',
             'full_address',
+            'daily_operating_hours',
             'created_at',
         ]
         read_only_fields = ['id', 'created_at']
@@ -111,6 +164,22 @@ class RestaurantInfoSerializer(serializers.ModelSerializer):
             location = obj.location
             return f"{location.address}, {location.city}, {location.state} {location.zip_code}"
         return None
+    
+    def get_daily_operating_hours(self, obj):
+        """
+        Get all daily operating hours (Monday-Sunday) as nested structured data.
+        
+        Returns a list of operating hours for each day of the week, ordered
+        Monday through Sunday. Each day includes opening/closing times and
+        whether the restaurant is closed that day.
+        
+        Returns:
+            list: List of dictionaries with daily operating hours, or empty list
+                  if no operating hours are configured.
+        """
+        # Fetch all daily operating hours ordered by day_of_week
+        daily_hours = DailyOperatingHours.objects.all().order_by('day_of_week')
+        return DailyOperatingHoursSerializer(daily_hours, many=True).data
 
 class MenuItemSerializer(serializers.ModelSerializer):
     """

@@ -8,9 +8,8 @@ including unique ID generation, coupon code generation, sales calculations, and 
 import logging
 import secrets
 import string
-import decimal
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Optional
 
 from django.db import transaction
@@ -890,7 +889,6 @@ def calculate_order_discount(order_total, discount_percentage):
     
     Returns:
         Decimal: The calculated discount amount, quantized to 2 decimal places.
-            Returns Decimal('0.00') if inputs are invalid.
     
     Raises:
         TypeError: If inputs cannot be converted to Decimal.
@@ -905,7 +903,7 @@ def calculate_order_discount(order_total, discount_percentage):
         Decimal('10.25')
         
         >>> calculate_order_discount(75.50, 15)
-        Decimal('11.33')
+        Decimal('11.32')
         
         >>> calculate_order_discount(100, 0)
         Decimal('0.00')
@@ -923,7 +921,7 @@ def calculate_order_discount(order_total, discount_percentage):
         # Convert inputs to Decimal for precise calculation
         order_total = Decimal(str(order_total))
         discount_percentage = Decimal(str(discount_percentage))
-    except (TypeError, ValueError, decimal.InvalidOperation) as e:
+    except (TypeError, ValueError, InvalidOperation) as e:
         raise TypeError(f"Invalid input types. Both arguments must be numeric: {e}")
     
     # Validate order_total

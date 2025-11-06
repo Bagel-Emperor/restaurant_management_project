@@ -9,7 +9,7 @@ import logging
 import secrets
 import string
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Optional
 
 from django.db import transaction
@@ -871,3 +871,72 @@ def format_datetime(dt: Optional[datetime], default: str = "") -> str:
         return default
     
     return dt.strftime('%B %d, %Y at %I:%M %p')
+
+
+def calculate_order_discount(order_total, discount_percentage):
+    """
+    Calculate the discount amount based on order total and discount percentage.
+    
+    This is a generic utility function for calculating discounts that can be used
+    for promotions, sales, or any discount calculation. It uses the standard
+    formula: discount_amount = order_total × (discount_percentage / 100)
+    
+    Args:
+        order_total (Decimal, float, or int): The order total amount before discount.
+            Must be a non-negative number.
+        discount_percentage (Decimal, float, or int): The discount percentage to apply.
+            Must be between 0 and 100 (inclusive).
+    
+    Returns:
+        Decimal: The calculated discount amount, quantized to 2 decimal places.
+    
+    Raises:
+        TypeError: If inputs cannot be converted to Decimal.
+        ValueError: If order_total is negative or discount_percentage is not between 0-100.
+    
+    Examples:
+        >>> from decimal import Decimal
+        >>> calculate_order_discount(100, 10)
+        Decimal('10.00')
+        
+        >>> calculate_order_discount(Decimal('50.00'), Decimal('20.5'))
+        Decimal('10.25')
+        
+        >>> calculate_order_discount(75.50, 15)
+        Decimal('11.32')
+        
+        >>> calculate_order_discount(100, 0)
+        Decimal('0.00')
+        
+        >>> calculate_order_discount(100, 100)
+        Decimal('100.00')
+    
+    Notes:
+        - All calculations use Decimal for precision to avoid floating-point errors
+        - Result is quantized to 2 decimal places (cent precision)
+        - Discount cannot exceed the order total
+        - Both inputs must be non-negative numbers
+    """
+    try:
+        # Convert inputs to Decimal for precise calculation
+        order_total = Decimal(str(order_total))
+        discount_percentage = Decimal(str(discount_percentage))
+    except (TypeError, ValueError, InvalidOperation) as e:
+        raise TypeError(f"Invalid input types. Both arguments must be numeric: {e}")
+    
+    # Validate order_total
+    if order_total < 0:
+        raise ValueError("Order total cannot be negative")
+    
+    # Validate discount_percentage
+    if discount_percentage < 0 or discount_percentage > 100:
+        raise ValueError("Discount percentage must be between 0 and 100")
+    
+    # Calculate discount: order_total × (percentage / 100)
+    discount_amount = order_total * (discount_percentage / Decimal('100'))
+    
+    # Ensure discount doesn't exceed order total (safety check)
+    discount_amount = min(discount_amount, order_total)
+    
+    # Quantize to 2 decimal places for currency precision
+    return discount_amount.quantize(Decimal('0.01'))

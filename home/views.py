@@ -1793,7 +1793,7 @@ class MenuItemAvailabilityView(generics.RetrieveAPIView):
     
     **Error Handling**:
         - Returns 404 if menu item with specified ID doesn't exist
-        - Returns 400 if ID is invalid (non-numeric)
+        - Returns 404 if ID format is invalid (URL routing will not match non-numeric IDs)
     
     **Example Usage**:
         GET /api/menu-items/5/check-availability/
@@ -1816,9 +1816,12 @@ class MenuItemAvailabilityView(generics.RetrieveAPIView):
         - Order validation before checkout
         - Mobile app quick status checks
     """
-    queryset = MenuItem.objects.all()
     permission_classes = [permissions.AllowAny]
     lookup_field = 'pk'
+    
+    def get_queryset(self):
+        """Optimize query to only fetch fields needed for availability check."""
+        return MenuItem.objects.only('id', 'name', 'is_available')
     
     def retrieve(self, request, *args, **kwargs):
         """
@@ -1828,34 +1831,18 @@ class MenuItemAvailabilityView(generics.RetrieveAPIView):
         menu item ID, and name. This is more efficient than retrieving the
         full menu item object when only availability is needed.
         """
-        try:
-            # Get the menu item instance
-            instance = self.get_object()
-            
-            # Log the availability check
-            logger.info(
-                f"Availability check for menu item '{instance.name}' (ID: {instance.id}): "
-                f"{'available' if instance.is_available else 'unavailable'}"
-            )
-            
-            # Return simplified response with just availability status
-            return Response({
-                'id': instance.id,
-                'name': instance.name,
-                'available': instance.is_available
-            }, status=status.HTTP_200_OK)
-            
-        except Http404:
-            # Handle menu item not found
-            logger.warning(f"Availability check attempted for non-existent menu item ID: {kwargs.get('pk')}")
-            return Response(
-                {'detail': 'Menu item not found.'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        except Exception as e:
-            # Handle any unexpected errors
-            logger.error(f"Error checking menu item availability: {str(e)}")
-            return Response(
-                {'error': 'Unable to check menu item availability.'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        # Get the menu item instance (DRF handles Http404 automatically)
+        instance = self.get_object()
+        
+        # Log the availability check
+        logger.info(
+            f"Availability check for menu item '{instance.name}' (ID: {instance.id}): "
+            f"{'available' if instance.is_available else 'unavailable'}"
+        )
+        
+        # Return simplified response with just availability status
+        return Response({
+            'id': instance.id,
+            'name': instance.name,
+            'available': instance.is_available
+        })

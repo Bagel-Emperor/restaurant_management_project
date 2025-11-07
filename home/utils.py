@@ -758,3 +758,67 @@ def get_distinct_cuisines():
     )
     
     return cuisines
+
+
+def calculate_average_rating(reviews_queryset) -> float:
+    """
+    Calculate the average rating from a queryset of reviews.
+    
+    This utility function computes the mean rating value from a collection
+    of restaurant reviews. It handles edge cases such as empty querysets
+    and ensures robust error handling.
+    
+    Args:
+        reviews_queryset: A Django queryset of UserReview objects.
+                         Expected to have a 'rating' field (IntegerField 1-5).
+    
+    Returns:
+        float: The average rating rounded to 2 decimal places.
+               Returns 0.0 if the queryset is empty or has no valid ratings.
+    
+    Edge Cases:
+        - Empty queryset: Returns 0.0
+        - No reviews: Returns 0.0
+        - Single review: Returns that review's rating as a float
+        - Multiple reviews: Returns the arithmetic mean
+    
+    Example:
+        >>> from home.models import UserReview
+        >>> reviews = UserReview.objects.filter(menu_item_id=1)
+        >>> avg_rating = calculate_average_rating(reviews)
+        >>> print(f"Average rating: {avg_rating}")
+        Average rating: 4.33
+        
+        >>> empty_reviews = UserReview.objects.none()
+        >>> calculate_average_rating(empty_reviews)
+        0.0
+    
+    Notes:
+        - This function is queryset-agnostic and can work with any filtered
+          subset of reviews (by menu item, user, date range, etc.)
+        - Uses Python's built-in sum/len for simplicity and clarity
+        - Rounds to 2 decimal places for consistent display formatting
+    """
+    try:
+        # Count the number of reviews
+        review_count = reviews_queryset.count()
+        
+        # Handle empty queryset
+        if review_count == 0:
+            return 0.0
+        
+        # Calculate sum of all ratings
+        total_rating = sum(review.rating for review in reviews_queryset)
+        
+        # Calculate and return average (rounded to 2 decimal places)
+        average = total_rating / review_count
+        return round(average, 2)
+    
+    except (TypeError, AttributeError, ZeroDivisionError) as e:
+        # Log the error for debugging purposes
+        logger.error(f"Error calculating average rating: {str(e)}")
+        return 0.0
+    except Exception as e:
+        # Catch any unexpected errors
+        logger.error(f"Unexpected error in calculate_average_rating: {str(e)}")
+        return 0.0

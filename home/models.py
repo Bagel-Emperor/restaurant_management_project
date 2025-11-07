@@ -218,6 +218,54 @@ class MenuItem(models.Model):
 		
 		# Round to 2 decimal places for currency precision
 		return final_price.quantize(Decimal('0.01'))
+	
+	@classmethod
+	def get_by_cuisine(cls, cuisine_type):
+		"""
+		Filter menu items by cuisine type (category name).
+		
+		Note: In this project, cuisine type maps to the MenuCategory.name field.
+		This method performs a case-insensitive search for menu items belonging
+		to a specific category/cuisine type.
+		
+		Args:
+			cuisine_type (str): The cuisine/category type to filter by (e.g., 'Italian', 
+								'Chinese', 'Desserts', 'Appetizers')
+		
+		Returns:
+			QuerySet: Filtered queryset of MenuItem objects matching the cuisine type.
+					  Returns empty queryset if no matches found or cuisine_type is None/empty.
+		
+		Examples:
+			>>> # Get all Italian items
+			>>> italian_items = MenuItem.get_by_cuisine('Italian')
+			>>> italian_items.count()
+			5
+			
+			>>> # Get all Desserts (case-insensitive)
+			>>> desserts = MenuItem.get_by_cuisine('desserts')
+			>>> for item in desserts:
+			...     print(item.name)
+			
+			>>> # No matches returns empty queryset
+			>>> MenuItem.get_by_cuisine('NonExistent').exists()
+			False
+			
+			>>> # Can chain with other queryset methods
+			>>> MenuItem.get_by_cuisine('Chinese').filter(is_available=True)
+		
+		Notes:
+			- Case-insensitive matching (e.g., 'italian' matches 'Italian')
+			- Returns QuerySet, not list - allows further filtering/chaining
+			- Items with no category (category=None) will not be included
+			- Empty or None cuisine_type returns empty queryset
+		"""
+		# Handle None or empty string
+		if not cuisine_type:
+			return cls.objects.none()
+		
+		# Filter by category name (case-insensitive)
+		return cls.objects.filter(category__name__iexact=cuisine_type)
 
 class Feedback(models.Model):
 	comment = models.TextField()

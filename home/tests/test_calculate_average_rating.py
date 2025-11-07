@@ -247,13 +247,6 @@ class CalculateAverageRatingTests(TestCase):
             category=self.category,
             is_available=True
         )
-        item5 = MenuItem.objects.create(
-            name='Soup',
-            price='7.99',
-            restaurant=self.restaurant,
-            category=self.category,
-            is_available=True
-        )
         
         ratings = [1, 2, 3, 4, 5]
         users = [self.user1, self.user2, self.user3, self.user1, self.user2]

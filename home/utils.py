@@ -766,7 +766,8 @@ def calculate_average_rating(reviews_queryset) -> float:
     
     This utility function computes the mean rating value from a collection
     of restaurant reviews. It handles edge cases such as empty querysets
-    and ensures robust error handling.
+    and ensures robust error handling. Uses Django's aggregate() with Avg()
+    for efficient database-level calculation.
     
     Args:
         reviews_queryset: A Django queryset of UserReview objects.
@@ -796,25 +797,26 @@ def calculate_average_rating(reviews_queryset) -> float:
     Notes:
         - This function is queryset-agnostic and can work with any filtered
           subset of reviews (by menu item, user, date range, etc.)
-        - Uses Python's built-in sum/len for simplicity and clarity
+        - Uses Django's aggregate() with Avg() for efficient database-level calculation
+        - Performs a single database query instead of multiple
         - Rounds to 2 decimal places for consistent display formatting
     """
     try:
-        # Count the number of reviews
-        review_count = reviews_queryset.count()
+        from django.db.models import Avg
         
-        # Handle empty queryset
-        if review_count == 0:
+        # Use Django's aggregate with Avg for efficient database-level calculation
+        # This performs a single database query and returns None if queryset is empty
+        result = reviews_queryset.aggregate(avg_rating=Avg('rating'))
+        avg_rating = result['avg_rating']
+        
+        # Handle empty queryset (aggregate returns None)
+        if avg_rating is None:
             return 0.0
         
-        # Calculate sum of all ratings
-        total_rating = sum(review.rating for review in reviews_queryset)
-        
-        # Calculate and return average (rounded to 2 decimal places)
-        average = total_rating / review_count
-        return round(average, 2)
+        # Round to 2 decimal places and return
+        return round(float(avg_rating), 2)
     
-    except (TypeError, AttributeError, ZeroDivisionError) as e:
+    except (TypeError, AttributeError) as e:
         # Log the error for debugging purposes
         logger.error(f"Error calculating average rating: {str(e)}")
         return 0.0

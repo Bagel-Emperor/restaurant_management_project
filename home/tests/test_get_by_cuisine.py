@@ -319,7 +319,7 @@ class MenuItemGetByCuisineTests(TestCase):
     def test_empty_cuisine_with_category_exists(self):
         """Test cuisine with category that has no items."""
         # Create a category with no items
-        mexican = MenuCategory.objects.create(
+        MenuCategory.objects.create(
             name="Mexican",
             description="Mexican cuisine"
         )

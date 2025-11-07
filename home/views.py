@@ -1771,3 +1771,78 @@ class MenuItemSearchView(ListAPIView):
         
         return super().list(request, *args, **kwargs)
 
+
+class MenuItemAvailabilityView(generics.RetrieveAPIView):
+    """
+    API endpoint to check the availability of a menu item by its ID.
+    
+    Returns a simple JSON response indicating whether the item is currently available.
+    This is a lightweight endpoint optimized for quick availability checks without
+    returning the full menu item data.
+    
+    **Endpoint**: GET /api/menu-items/{id}/check-availability/
+    
+    **Authentication**: Not required (public access)
+    
+    **Response Format**:
+        {
+            "id": 1,
+            "name": "Margherita Pizza",
+            "available": true
+        }
+    
+    **Error Handling**:
+        - Returns 404 if menu item with specified ID doesn't exist
+        - Returns 404 if ID format is invalid (URL routing will not match non-numeric IDs)
+    
+    **Example Usage**:
+        GET /api/menu-items/5/check-availability/
+        
+        Success Response (200 OK):
+        {
+            "id": 5,
+            "name": "Caesar Salad",
+            "available": true
+        }
+        
+        Not Found Response (404 NOT FOUND):
+        {
+            "detail": "Not found."
+        }
+    
+    **Use Cases**:
+        - Real-time availability checks in shopping cart
+        - Menu display (show/hide unavailable items)
+        - Order validation before checkout
+        - Mobile app quick status checks
+    """
+    permission_classes = [permissions.AllowAny]
+    lookup_field = 'pk'
+    
+    def get_queryset(self):
+        """Optimize query to only fetch fields needed for availability check."""
+        return MenuItem.objects.only('id', 'name', 'is_available')
+    
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieve availability status for a specific menu item.
+        
+        Returns a simplified JSON response with just the availability status,
+        menu item ID, and name. This is more efficient than retrieving the
+        full menu item object when only availability is needed.
+        """
+        # Get the menu item instance (DRF handles Http404 automatically)
+        instance = self.get_object()
+        
+        # Log the availability check
+        logger.info(
+            f"Availability check for menu item '{instance.name}' (ID: {instance.id}): "
+            f"{'available' if instance.is_available else 'unavailable'}"
+        )
+        
+        # Return simplified response with just availability status
+        return Response({
+            'id': instance.id,
+            'name': instance.name,
+            'available': instance.is_available
+        })

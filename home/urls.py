@@ -10,6 +10,7 @@ from .views import (
     RestaurantOpeningHoursView,  # Opening hours endpoint
     MenuItemSearchView,  # Menu item search endpoint
     MenuItemAvailabilityView,  # Menu item availability check endpoint
+    MenuItemPriceRangeView,  # Menu item price range filter endpoint
     # Cart API views
     cart_summary, add_to_cart_api, remove_from_cart_api, update_cart_item_api, clear_cart_api,
     # Contact form API view
@@ -66,6 +67,9 @@ urlpatterns = [
     
     # API endpoint for menu item availability check
     path('api/menu-items/<int:pk>/check-availability/', MenuItemAvailabilityView.as_view(), name='menuitem-availability'),
+    
+    # API endpoint for menu items by price range
+    path('api/menu-items/price-range/', MenuItemPriceRangeView.as_view(), name='menuitem-price-range'),
     
     # API endpoint for paginated restaurant reviews
     path('api/restaurant-reviews/', RestaurantReviewsListView.as_view(), name='restaurant-reviews'),

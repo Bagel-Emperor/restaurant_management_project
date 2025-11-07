@@ -1771,3 +1771,91 @@ class MenuItemSearchView(ListAPIView):
         
         return super().list(request, *args, **kwargs)
 
+
+class MenuItemAvailabilityView(generics.RetrieveAPIView):
+    """
+    API endpoint to check the availability of a menu item by its ID.
+    
+    Returns a simple JSON response indicating whether the item is currently available.
+    This is a lightweight endpoint optimized for quick availability checks without
+    returning the full menu item data.
+    
+    **Endpoint**: GET /api/menu-items/{id}/check-availability/
+    
+    **Authentication**: Not required (public access)
+    
+    **Response Format**:
+        {
+            "id": 1,
+            "name": "Margherita Pizza",
+            "available": true
+        }
+    
+    **Error Handling**:
+        - Returns 404 if menu item with specified ID doesn't exist
+        - Returns 400 if ID is invalid (non-numeric)
+    
+    **Example Usage**:
+        GET /api/menu-items/5/check-availability/
+        
+        Success Response (200 OK):
+        {
+            "id": 5,
+            "name": "Caesar Salad",
+            "available": true
+        }
+        
+        Not Found Response (404 NOT FOUND):
+        {
+            "detail": "Not found."
+        }
+    
+    **Use Cases**:
+        - Real-time availability checks in shopping cart
+        - Menu display (show/hide unavailable items)
+        - Order validation before checkout
+        - Mobile app quick status checks
+    """
+    queryset = MenuItem.objects.all()
+    permission_classes = [permissions.AllowAny]
+    lookup_field = 'pk'
+    
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieve availability status for a specific menu item.
+        
+        Returns a simplified JSON response with just the availability status,
+        menu item ID, and name. This is more efficient than retrieving the
+        full menu item object when only availability is needed.
+        """
+        try:
+            # Get the menu item instance
+            instance = self.get_object()
+            
+            # Log the availability check
+            logger.info(
+                f"Availability check for menu item '{instance.name}' (ID: {instance.id}): "
+                f"{'available' if instance.is_available else 'unavailable'}"
+            )
+            
+            # Return simplified response with just availability status
+            return Response({
+                'id': instance.id,
+                'name': instance.name,
+                'available': instance.is_available
+            }, status=status.HTTP_200_OK)
+            
+        except Http404:
+            # Handle menu item not found
+            logger.warning(f"Availability check attempted for non-existent menu item ID: {kwargs.get('pk')}")
+            return Response(
+                {'detail': 'Menu item not found.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            # Handle any unexpected errors
+            logger.error(f"Error checking menu item availability: {str(e)}")
+            return Response(
+                {'error': 'Unable to check menu item availability.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

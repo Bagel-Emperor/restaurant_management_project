@@ -11,6 +11,7 @@ from rest_framework.pagination import PageNumberPagination
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.db.models import Q
+from decimal import Decimal, InvalidOperation
 import logging
 from .forms import FeedbackForm, ContactSubmissionForm
 from .models import Restaurant, MenuItem, MenuCategory, Cart, CartItem, ContactSubmission, Table, UserReview, Ingredient
@@ -1846,3 +1847,187 @@ class MenuItemAvailabilityView(generics.RetrieveAPIView):
             'name': instance.name,
             'available': instance.is_available
         })
+
+
+class MenuItemPriceRangeView(generics.ListAPIView):
+    """
+    API endpoint to retrieve menu items within a specified price range.
+    
+    Returns a paginated list of menu items filtered by minimum and maximum price.
+    This endpoint is useful for price-based filtering in menus, allowing customers
+    to find items within their budget.
+    
+    **Endpoint**: GET /api/menu-items/price-range/?min_price=<min>&max_price=<max>
+    
+    **Authentication**: Not required (public access)
+    
+    **Query Parameters**:
+        - min_price (optional): Minimum price (inclusive). Defaults to 0.00 if not provided.
+        - max_price (optional): Maximum price (inclusive). Defaults to no upper limit if not provided.
+        
+    **Response Format** (Paginated):
+        {
+            "count": 15,
+            "next": "http://example.com/api/menu-items/price-range/?min_price=10&max_price=20&page=2",
+            "previous": null,
+            "results": [
+                {
+                    "id": 1,
+                    "name": "Margherita Pizza",
+                    "description": "Classic Italian pizza",
+                    "price": "12.99",
+                    "restaurant": 1,
+                    "category": 2,
+                    "category_name": "Main Course",
+                    "is_available": true,
+                    "image": "http://example.com/media/menu_images/pizza.jpg",
+                    "created_at": "2025-01-15T10:30:00Z"
+                },
+                ...
+            ]
+        }
+    
+    **Error Handling**:
+        - 400: Invalid price format (non-numeric values)
+        - 400: Negative price values
+        - 400: min_price greater than max_price
+    
+    **Example Usage**:
+        # Get items between $10 and $20
+        GET /api/menu-items/price-range/?min_price=10&max_price=20
+        
+        # Get items under $15 (min_price defaults to 0)
+        GET /api/menu-items/price-range/?max_price=15
+        
+        # Get items over $25 (no max_price means no upper limit)
+        GET /api/menu-items/price-range/?min_price=25
+        
+        # Get all items (both parameters optional)
+        GET /api/menu-items/price-range/
+    
+    **Use Cases**:
+        - Budget-based menu filtering
+        - Price range sliders on frontend
+        - "Affordable options" sections
+        - Premium/luxury item filtering
+        - Special promotions (items under $10)
+    """
+    serializer_class = MenuItemSerializer
+    permission_classes = [permissions.AllowAny]
+    pagination_class = PageNumberPagination
+    
+    def get_queryset(self):
+        """
+        Filter menu items by price range based on query parameters.
+        
+        Returns:
+            QuerySet: Filtered menu items within the specified price range,
+                     ordered by price (ascending).
+        """
+        queryset = MenuItem.objects.select_related('category', 'restaurant').all()
+        
+        # Get query parameters (already validated in list() method)
+        min_price = self.request.query_params.get('min_price')
+        max_price = self.request.query_params.get('max_price')
+        
+        # Apply minimum price filter if provided
+        if min_price is not None:
+            queryset = queryset.filter(price__gte=Decimal(min_price))
+        
+        # Apply maximum price filter if provided
+        if max_price is not None:
+            queryset = queryset.filter(price__lte=Decimal(max_price))
+        
+        # Order by price (ascending) for better UX
+        queryset = queryset.order_by('price')
+        
+        logger.info(
+            f"Price range query: min_price={min_price}, max_price={max_price}, "
+            f"results={queryset.count()}"
+        )
+        
+        return queryset
+    
+    def list(self, request, *args, **kwargs):
+        """
+        Override list to add query parameter validation.
+        
+        Validates that:
+        - Price values are valid decimals
+        - Price values are non-negative
+        - min_price is not greater than max_price
+        
+        Returns 400 error with descriptive message if validation fails.
+        """
+        min_price_str = request.query_params.get('min_price')
+        max_price_str = request.query_params.get('max_price')
+        
+        # Validate min_price
+        if min_price_str is not None:
+            try:
+                min_price = Decimal(min_price_str)
+                if min_price < 0:
+                    return Response(
+                        {
+                            'error': 'min_price must be a non-negative number.',
+                            'provided_value': min_price_str,
+                            'example': '/api/menu-items/price-range/?min_price=0&max_price=50'
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            except (ValueError, TypeError, InvalidOperation):
+                return Response(
+                    {
+                        'error': 'min_price must be a valid decimal number.',
+                        'provided_value': min_price_str,
+                        'example': '/api/menu-items/price-range/?min_price=10.50&max_price=50'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            min_price = None
+        
+        # Validate max_price
+        if max_price_str is not None:
+            try:
+                max_price = Decimal(max_price_str)
+                if max_price < 0:
+                    return Response(
+                        {
+                            'error': 'max_price must be a non-negative number.',
+                            'provided_value': max_price_str,
+                            'example': '/api/menu-items/price-range/?min_price=0&max_price=50'
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            except (ValueError, TypeError, InvalidOperation):
+                return Response(
+                    {
+                        'error': 'max_price must be a valid decimal number.',
+                        'provided_value': max_price_str,
+                        'example': '/api/menu-items/price-range/?min_price=10&max_price=50.99'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            max_price = None
+        
+        # Validate min_price <= max_price
+        if min_price is not None and max_price is not None:
+            if min_price > max_price:
+                return Response(
+                    {
+                        'error': 'min_price cannot be greater than max_price.',
+                        'min_price': str(min_price),
+                        'max_price': str(max_price),
+                        'example': '/api/menu-items/price-range/?min_price=10&max_price=50'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Log successful validation
+        logger.info(
+            f"Price range request validated: min_price={min_price}, max_price={max_price}"
+        )
+        
+        return super().list(request, *args, **kwargs)
